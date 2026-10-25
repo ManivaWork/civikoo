@@ -70,13 +70,15 @@ DECLARE
   v_exists boolean;
 BEGIN
   SELECT * INTO v_item FROM public.items WHERE code = p_item_code AND active = true;
-  IF v_item IS NULL THEN
+  IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'Item não encontrado ou indisponível', '', 0, 0;
+    RETURN;
   END IF;
 
   SELECT * INTO v_profile FROM public.profiles WHERE id = v_user_id;
-  IF v_profile IS NULL THEN
+  IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'Perfil não encontrado', '', 0, 0;
+    RETURN;
   END IF;
 
   IF v_profile.level < v_item.min_level THEN
@@ -97,6 +99,7 @@ BEGIN
   INSERT INTO public.user_items (user_id, item_id) VALUES (v_user_id, v_item.id);
 
   RETURN QUERY SELECT true, 'Comprado com sucesso', v_item.code, v_item.price_coins, v_profile.coins - v_item.price_coins;
+  RETURN;
 END;
 $$;
 
@@ -123,8 +126,9 @@ BEGIN
   END IF;
 
   SELECT * INTO v_item FROM public.items WHERE code = p_item_code AND slot = p_slot;
-  IF v_item IS NULL THEN
+  IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'Item inválido para este slot', p_slot, '';
+    RETURN;
   END IF;
 
   -- Check ownership
@@ -137,6 +141,7 @@ BEGIN
   ON CONFLICT (user_id) DO UPDATE SET p_slot = v_item.id, updated_at = now();
 
   RETURN QUERY SELECT true, 'Equipado', p_slot, v_item.code;
+  RETURN;
 END;
 $$;
 

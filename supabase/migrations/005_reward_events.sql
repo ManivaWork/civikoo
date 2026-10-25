@@ -103,6 +103,7 @@ BEGIN
     WHERE user_id = v_user_id
     GROUP BY source
   ) s;
+  RETURN;
 END;
 $$;
 

@@ -70,11 +70,13 @@ BEGIN
 
   IF v_count >= p_max_per_window THEN
     RETURN QUERY SELECT false, 0, v_window_start + p_window;
+    RETURN;
   END IF;
 
   INSERT INTO public.rate_limit_log (user_id, action) VALUES (p_user_id, p_action);
 
   RETURN QUERY SELECT true, p_max_per_window - v_count - 1, v_window_start + p_window;
+  RETURN;
 END;
 $$;
 
@@ -132,7 +134,7 @@ BEGIN
     LIMIT 1;
   END IF;
 
-  IF v_last_record IS NULL THEN
+  IF NOT FOUND THEN
     RETURN false;
   END IF;
 

@@ -83,6 +83,7 @@ BEGIN
   END IF;
 
   RETURN QUERY SELECT true, 'Confirmado com sucesso', v_distance, p_accuracy;
+  RETURN;
 END;
 $$;
 
@@ -109,8 +110,9 @@ BEGIN
   END IF;
 
   SELECT * INTO v_report FROM public.reports WHERE id = p_report_id;
-  IF v_report IS NULL THEN
+  IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'Reporte não encontrado', 0, false;
+    RETURN;
   END IF;
 
   -- Check already flagged (using report_confirmations type='flag' as placeholder)
@@ -123,9 +125,11 @@ BEGIN
   IF v_flag_count >= 3 THEN
     UPDATE public.reports SET hidden = true, updated_at = now() WHERE id = p_report_id;
     RETURN QUERY SELECT true, 'Reporte ocultado por denúncias', v_flag_count, true;
+    RETURN;
   END IF;
 
   RETURN QUERY SELECT true, 'Denúncia registrada', v_flag_count, false;
+  RETURN;
 END;
 $$;
 
@@ -183,6 +187,7 @@ BEGIN
     AND (p_category IS NULL OR r.category = p_category)
   ORDER BY distance_m
   LIMIT 10;
+  RETURN;
 END;
 $$;
 
@@ -281,6 +286,7 @@ BEGIN
       'confirmations_resolvido', v_report.confirmations_resolvido
     );
   END LOOP;
+  RETURN;
 END;
 $$;
 

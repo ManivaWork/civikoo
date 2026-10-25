@@ -26,7 +26,7 @@ DECLARE
   v_milestone int;
 BEGIN
   SELECT * INTO v_profile FROM public.profiles WHERE id = v_user_id;
-  IF v_profile IS NULL THEN RETURN; END IF;
+  IF NOT FOUND THEN RETURN; END IF;
 
   IF v_profile.last_active_date = v_today THEN
     RETURN; -- Already counted today

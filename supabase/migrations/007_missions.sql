@@ -140,6 +140,7 @@ BEGIN
       (v_mission.claimed_at IS NOT NULL) as is_claimed,
       (v_mission.progress >= v_template.target AND v_mission.claimed_at IS NULL) as can_claim;
   END LOOP;
+  RETURN;
 END;
 $$;
 
@@ -157,31 +158,59 @@ DECLARE
   v_template public.mission_templates;
   v_user_id uuid := auth.uid();
 BEGIN
-  SELECT um.*, mt.* INTO v_mission, v_template
-  FROM public.user_missions um
-  JOIN public.mission_templates mt ON um.template_id = mt.id
-  WHERE um.id = p_user_mission_id AND um.user_id = v_user_id;
+  IF v_user_id IS NULL THEN
+    RETURN QUERY SELECT false, 'Não autenticado', 0, 0;
+    RETURN;
+  END IF;
 
-  IF v_mission IS NULL THEN
+  -- Trava a linha da missão (evita resgate duplo simultâneo)
+  SELECT um.* INTO v_mission
+  FROM public.user_missions um
+  WHERE um.id = p_user_mission_id
+    AND um.user_id = v_user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'Missão não encontrada', 0, 0;
+    RETURN;
+  END IF;
+
+  SELECT mt.* INTO v_template
+  FROM public.mission_templates mt
+  WHERE mt.id = v_mission.template_id;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT false, 'Template da missão não encontrado', 0, 0;
+    RETURN;
   END IF;
 
   IF v_mission.claimed_at IS NOT NULL THEN
     RETURN QUERY SELECT false, 'Já resgatada', 0, 0;
+    RETURN;
   END IF;
 
   IF v_mission.progress < v_template.target THEN
     RETURN QUERY SELECT false, 'Missão não concluída', 0, 0;
+    RETURN;
   END IF;
 
-  UPDATE public.user_missions SET claimed_at = now() WHERE id = p_user_mission_id;
-  PERFORM public.award_reward(v_user_id, 'mission_claim', v_template.reward_xp, v_template.reward_coins, 'mission', p_user_mission_id);
+  UPDATE public.user_missions
+  SET claimed_at = now()
+  WHERE id = p_user_mission_id;
 
-  RETURN QUERY SELECT true, 'Resgatado com sucesso', v_template.reward_xp, v_template.reward_coins;
+  PERFORM public.award_reward(
+    v_user_id, 'mission_claim',
+    v_template.reward_xp, v_template.reward_coins,
+    'mission', p_user_mission_id
+  );
+
+  RETURN QUERY SELECT true, 'Resgatado com sucesso',
+                      v_template.reward_xp, v_template.reward_coins;
+  RETURN;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.claim_mission TO authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_mission(uuid) TO authenticated;
 
 -- Seed default missions
 INSERT INTO public.mission_templates (code, title, description, type, metric, target, reward_xp, reward_coins) VALUES

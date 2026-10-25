@@ -148,6 +148,7 @@ BEGIN
          p.streak_count, p.best_streak, p.created_at
   FROM public.profiles p
   WHERE p.id = p_user_id AND p.banned = false;
+  RETURN;
 END;
 $$;
 
@@ -172,7 +173,7 @@ DECLARE
   v_equipped public.user_equipped_items;
 BEGIN
   SELECT * INTO v_equipped FROM public.user_equipped_items WHERE user_id = v_user_id;
-  IF v_equipped IS NULL THEN RETURN; END IF;
+  IF NOT FOUND THEN RETURN; END IF;
 
   RETURN QUERY
   SELECT
@@ -190,6 +191,7 @@ BEGIN
   SELECT
     'fundo'::public.item_slot, v_equipped.fundo, i.code, i.name, i.rarity, i.asset
   FROM public.items i WHERE i.id = v_equipped.fundo;
+  RETURN;
 END;
 $$;
 

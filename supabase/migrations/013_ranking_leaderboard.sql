@@ -52,6 +52,7 @@ BEGIN
     (SELECT count(*) FROM public.profiles WHERE banned = false)::int
   FROM public.leaderboard l
   WHERE l.user_id = v_user_id;
+  RETURN;
 END;
 $$;
 
@@ -82,6 +83,7 @@ BEGIN
   FROM public.leaderboard l
   ORDER BY l.rank
   LIMIT p_limit OFFSET p_offset;
+  RETURN;
 END;
 $$;
 
@@ -141,6 +143,7 @@ BEGIN
   FROM public.weekly_leaderboard l
   ORDER BY l.rank
   LIMIT p_limit OFFSET p_offset;
+  RETURN;
 END;
 $$;
 
@@ -163,6 +166,7 @@ BEGIN
     COALESCE(l.weekly_coins, 0)
   FROM public.weekly_leaderboard l
   WHERE l.user_id = v_user_id;
+  RETURN;
 END;
 $$;
 

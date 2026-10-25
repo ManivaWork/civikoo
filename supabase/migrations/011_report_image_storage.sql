@@ -69,8 +69,9 @@ DECLARE
 BEGIN
   -- Verify report exists and belongs to user
   SELECT * INTO v_report FROM public.reports WHERE id = p_report_id;
-  IF v_report IS NULL THEN
+  IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'Reporte não encontrado', NULL::uuid;
+    RETURN;
   END IF;
 
   IF v_report.user_id <> v_user_id THEN
@@ -96,6 +97,7 @@ BEGIN
   RETURNING id INTO v_count;
 
   RETURN QUERY SELECT true, 'Imagem registrada', v_count::uuid;
+  RETURN;
 END;
 $$;
 
@@ -113,8 +115,9 @@ DECLARE
   v_image public.report_images;
 BEGIN
   SELECT * INTO v_image FROM public.report_images WHERE id = p_image_id;
-  IF v_image IS NULL THEN
+  IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'Imagem não encontrada';
+    RETURN;
   END IF;
 
   IF v_image.user_id <> v_user_id THEN
@@ -126,6 +129,7 @@ BEGIN
   DELETE FROM public.report_images WHERE id = p_image_id;
 
   RETURN QUERY SELECT true, 'Imagem excluída';
+  RETURN;
 END;
 $$;
 
@@ -151,8 +155,9 @@ DECLARE
 BEGIN
   -- Verify report
   SELECT * INTO v_report FROM public.reports WHERE id = p_report_id;
-  IF v_report IS NULL THEN
+  IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'Reporte não encontrado', '', '';
+    RETURN;
   END IF;
 
   IF v_report.user_id <> v_user_id THEN
@@ -170,6 +175,7 @@ BEGIN
   -- Generate signed URL (requires storage extension or edge function)
   -- This is a placeholder - actual implementation uses supabase.storage.from('report-images').createSignedUploadUrl()
   RETURN QUERY SELECT true, 'OK', ''::text, v_path;
+  RETURN;
 END;
 $$;
 
