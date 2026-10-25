@@ -20,7 +20,7 @@ export interface Report {
   status: ReportStatus;
   confirmations_continua: number;  // NEW: replaces confirmations_count
   confirmations_resolvido: number; // NEW: replaces denials_count
-  points: number;  // NEW: points instead of score_awarded
+  // points removed - use REPORT_BASE_XP constant or CATEGORY_DISPLAY_POINTS[category] for display
   created_at: string;
   updated_at: string;
   resolved_at?: string | null;
@@ -140,6 +140,18 @@ export function getCategoryConfig(category: ReportCategory) {
 export function getStatusConfig(status: ReportStatus) {
   return STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
 }
+
+// Base XP reward for creating a report (matches award_reward in 005_reward_events)
+export const REPORT_BASE_XP = 50;
+export const REPORT_BASE_COINS = 10;
+
+// Category display points (for UI display only, not actual rewards)
+export const CATEGORY_DISPLAY_POINTS: Record<ReportCategory, number> = {
+  buraco_asfalto: 10,
+  vazamento_agua: 15,
+  sinalizacao: 8,
+  acessibilidade: 12,
+};
 
 // ========================
 // Items & Avatar

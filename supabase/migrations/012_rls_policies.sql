@@ -1,5 +1,6 @@
 -- 012: Comprehensive RLS Policies
 -- ============================================================================
+-- Depends on: all previous migrations (tables must exist)
 
 -- Enable RLS on all tables (idempotent)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;

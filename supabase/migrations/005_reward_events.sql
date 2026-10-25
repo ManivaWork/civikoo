@@ -1,5 +1,6 @@
 -- 005: reward_events table (immutable audit log for XP/coins)
 -- ============================================================================
+-- Depends on: 001 (profiles)
 
 CREATE TABLE IF NOT EXISTS public.reward_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

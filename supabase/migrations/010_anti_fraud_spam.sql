@@ -1,5 +1,6 @@
 -- 010: Anti-fraud / rate limits / spam protection
 -- ============================================================================
+-- Depends on: 001 (profiles), 002 (reports), 003 (report_confirmations)
 
 -- Rate limit log table
 CREATE TABLE IF NOT EXISTS public.rate_limit_log (

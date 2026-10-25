@@ -11,6 +11,7 @@ import { ReportBottomSheet } from "./components/ui/ReportBottomSheet";
 import { FilterBottomSheet } from "./components/ui/FilterBottomSheet";
 import { SessionProvider, useSession } from "@/lib/auth";
 import type { Report, UserProfile, ReportCategory, ReportStatus } from "./components/map/types";
+import { REPORT_BASE_XP, CATEGORY_DISPLAY_POINTS } from "./components/map/types";
 import { createClient } from "@/lib/supabase/client";
 import { fetchReportsInBounds } from "@/lib/supabase/client";
 
@@ -39,7 +40,6 @@ const mockReports: Report[] = [
     status: "ativo",
     confirmations_continua: 2,
     confirmations_resolvido: 0,
-    points: 10,
     created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     updated_at: new Date().toISOString(),
     creator_username: "joaosilva",
@@ -61,7 +61,6 @@ const mockReports: Report[] = [
     status: "em_analise",
     confirmations_continua: 4,
     confirmations_resolvido: 0,
-    points: 15,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     updated_at: new Date().toISOString(),
     creator_username: "mariasouza",
@@ -83,7 +82,6 @@ const mockReports: Report[] = [
     status: "resolvido",
     confirmations_continua: 3,
     confirmations_resolvido: 2,
-    points: 8,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
     updated_at: new Date().toISOString(),
     creator_username: "carlosdev",
@@ -106,7 +104,6 @@ const mockReports: Report[] = [
     status: "em_analise",
     confirmations_continua: 8,
     confirmations_resolvido: 1,
-    points: 12,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
     updated_at: new Date().toISOString(),
     creator_username: "anapereira",
@@ -128,7 +125,6 @@ const mockReports: Report[] = [
     status: "ativo",
     confirmations_continua: 1,
     confirmations_resolvido: 0,
-    points: 10,
     created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
     updated_at: new Date().toISOString(),
     creator_username: "robertocosta",
@@ -255,7 +251,6 @@ function HomeContent() {
           status: r.status,
           confirmations_continua: r.confirmations_continua || 0,
           confirmations_resolvido: r.confirmations_resolvido || 0,
-          points: r.points || 10,
           created_at: r.created_at,
           updated_at: r.created_at,
           creator_username: r.creator_username,
@@ -345,7 +340,6 @@ function HomeContent() {
         status: r.status,
         confirmations_continua: r.confirmations_continua || 0,
         confirmations_resolvido: r.confirmations_resolvido || 0,
-        points: r.points || 10,
         created_at: r.created_at,
         updated_at: r.updated_at,
         creator_username: r.creator_username,

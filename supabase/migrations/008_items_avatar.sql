@@ -1,5 +1,6 @@
 -- 008: items and avatar system
 -- ============================================================================
+-- Depends on: 001 (profiles)
 
 CREATE TYPE public.item_slot AS ENUM ('cabeca', 'corpo', 'acessorio', 'fundo');
 CREATE TYPE public.item_rarity AS ENUM ('comum', 'raro', 'epico');
@@ -52,7 +53,8 @@ CREATE POLICY "equipped_select_own" ON public.user_equipped_items
 
 DROP POLICY IF EXISTS "equipped_update_own" ON public.user_equipped_items;
 CREATE POLICY "equipped_update_own" ON public.user_equipped_items
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- RPC: buy item
 CREATE OR REPLACE FUNCTION public.buy_item(p_item_code text)

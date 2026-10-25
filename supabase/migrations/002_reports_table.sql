@@ -1,8 +1,6 @@
 -- 002: reports table with PostGIS location
 -- ============================================================================
-
--- Ensure PostGIS extension
-CREATE EXTENSION IF NOT EXISTS postgis;
+-- Depends on: 001 (profiles table, postgis extension, report_status enum)
 
 -- Create enum for report status (real values from remote DB)
 DO $$
@@ -77,12 +75,17 @@ DROP POLICY IF EXISTS "reports_select_visible" ON public.reports;
 CREATE POLICY "reports_select_visible" ON public.reports
   FOR SELECT USING (hidden = false);
 
-DROP POLICY IF EXISTS "reports_insert_own" ON public.reports;
-CREATE POLICY "reports_insert_own" ON public.reports
+DROP POLICY IF EXISTS "reports_select_own" ON public.reports;
+CREATE POLICY "reports_select_own" ON public.reports
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "reports_insert_authenticated" ON public.reports;
+CREATE POLICY "reports_insert_authenticated" ON public.reports
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "reports_update_own" ON public.reports;
 CREATE POLICY "reports_update_own" ON public.reports
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 COMMENT ON TABLE public.reports IS 'Reportes de problemas urbanos. user_id = profiles.id = auth.uid(). Status deriva de report_confirmations.';

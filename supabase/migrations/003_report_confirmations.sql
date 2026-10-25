@@ -1,5 +1,6 @@
 -- 003: report_confirmations table (single unified table)
 -- ============================================================================
+-- Depends on: 001 (profiles), 002 (reports, report_status enum)
 
 CREATE TABLE IF NOT EXISTS public.report_confirmations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -87,12 +88,29 @@ GRANT EXECUTE ON FUNCTION public.can_confirm_report TO anon, authenticated;
 -- RLS
 ALTER TABLE public.report_confirmations ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "confirmations_select_all" ON public.report_confirmations;
-CREATE POLICY "confirmations_select_all" ON public.report_confirmations
-  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "confirmations_select_visible" ON public.report_confirmations;
+CREATE POLICY "confirmations_select_visible" ON public.report_confirmations
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.reports r
+      WHERE r.id = report_confirmations.report_id
+        AND r.hidden = false
+    )
+  );
 
-DROP POLICY IF EXISTS "confirmations_insert_own" ON public.report_confirmations;
-CREATE POLICY "confirmations_insert_own" ON public.report_confirmations
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "confirmations_select_own" ON public.report_confirmations;
+CREATE POLICY "confirmations_select_own" ON public.report_confirmations
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "confirmations_insert_authenticated" ON public.report_confirmations;
+CREATE POLICY "confirmations_insert_authenticated" ON public.report_confirmations
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id
+    AND NOT EXISTS (
+      SELECT 1 FROM public.reports r
+      WHERE r.id = report_confirmations.report_id
+        AND r.user_id = auth.uid()
+    )
+  );
 
 COMMENT ON TABLE public.report_confirmations IS 'Confirmações de reportes: type = continua ou resolvido. Uma por usuário por tipo.';

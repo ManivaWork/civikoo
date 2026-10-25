@@ -1,12 +1,13 @@
 -- 013: Ranking & Leaderboards
 -- ============================================================================
+-- Depends on: 001 (profiles with banned column), 005 (reward_events)
 
 -- Materialized view for leaderboard (refreshed periodically)
 CREATE MATERIALIZED VIEW IF NOT EXISTS public.leaderboard AS
 SELECT
   p.id as user_id,
   p.username,
-  p.avatar,
+  p.avatar_url,
   p.level,
   p.xp,
   p.coins,
@@ -76,7 +77,7 @@ SET search_path = public, pg_catalog
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT l.rank, l.user_id, l.username, l.avatar, l.level, l.xp, l.coins,
+  SELECT l.rank, l.user_id, l.username, l.avatar_url, l.level, l.xp, l.coins,
          l.total_score, l.streak_count, l.best_streak
   FROM public.leaderboard l
   ORDER BY l.rank
@@ -91,7 +92,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS public.weekly_leaderboard AS
 SELECT
   p.id as user_id,
   p.username,
-  p.avatar,
+  p.avatar_url,
   p.level,
   COALESCE(SUM(re.amount_xp), 0) as weekly_xp,
   COALESCE(SUM(re.amount_coins), 0) as weekly_coins,
@@ -101,7 +102,7 @@ LEFT JOIN public.reward_events re ON re.user_id = p.id
   AND re.created_at >= (now() AT TIME ZONE 'America/Sao_Paulo')::date - (EXTRACT(DOW FROM (now() AT TIME ZONE 'America/Sao_Paulo')::date)::int || ' days')::interval
   AND re.created_at < (now() AT TIME ZONE 'America/Sao_Paulo')::date - (EXTRACT(DOW FROM (now() AT TIME ZONE 'America/Sao_Paulo')::date)::int || ' days')::interval + interval '7 days'
 WHERE p.banned = false
-GROUP BY p.id, p.username, p.avatar, p.level
+GROUP BY p.id, p.username, p.avatar_url, p.level
 ORDER BY weekly_xp DESC
 LIMIT 100;
 
@@ -136,7 +137,7 @@ SET search_path = public, pg_catalog
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT l.rank, l.user_id, l.username, l.avatar, l.level, l.weekly_xp, l.weekly_coins
+  SELECT l.rank, l.user_id, l.username, l.avatar_url, l.level, l.weekly_xp, l.weekly_coins
   FROM public.weekly_leaderboard l
   ORDER BY l.rank
   LIMIT p_limit OFFSET p_offset;

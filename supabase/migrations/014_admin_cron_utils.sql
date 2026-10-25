@@ -1,48 +1,8 @@
 -- 014: Admin functions, cron jobs, and utilities
 -- ============================================================================
-
--- Function to create profile on signup (called by auth trigger)
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_catalog
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, username, avatar_url, level, xp, coins, total_score, streak_count, best_streak, created_at, updated_at)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || substr(NEW.id::text, 1, 8)),
-    NEW.raw_user_meta_data->>'avatar_url',
-    1, 0, 0, 0, 0, 0,
-    now(), now()
-  )
-  ON CONFLICT (id) DO NOTHING;
-
-  -- Initialize user_missions for active templates
-  INSERT INTO public.user_missions (user_id, template_id, period_start)
-  SELECT NEW.id, mt.id,
-    CASE mt.type
-      WHEN 'diaria' THEN (now() AT TIME ZONE 'America/Sao_Paulo')::date
-      WHEN 'semanal' THEN (now() AT TIME ZONE 'America/Sao_Paulo')::date - (EXTRACT(DOW FROM (now() AT TIME ZONE 'America/Sao_Paulo')::date)::int || ' days')::interval
-    END
-  FROM public.mission_templates mt
-  WHERE mt.active = true
-  ON CONFLICT DO NOTHING;
-
-  -- Initialize equipped items
-  INSERT INTO public.user_equipped_items (user_id) VALUES (NEW.id)
-  ON CONFLICT DO NOTHING;
-
-  RETURN NEW;
-END;
-$$;
-
--- Trigger on auth.users insert
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- Depends on: 001 (profiles), 002 (reports), 003 (report_confirmations),
+--             005 (reward_events), 007 (mission_templates, user_missions),
+--             008 (items, user_items, user_equipped_items), 010 (rate_limit_log, fraud_alerts)
 
 -- Function to ban user (admin only via service role)
 CREATE OR REPLACE FUNCTION public.ban_user(p_user_id uuid, p_reason text DEFAULT NULL)
@@ -235,7 +195,6 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_user_avatar TO anon, authenticated;
 
-COMMENT ON FUNCTION public.handle_new_user IS 'Trigger function: cria perfil, missões e equipamentos ao cadastrar usuário.';
 COMMENT ON FUNCTION public.ban_user IS 'Banir usuário (admin).';
 COMMENT ON FUNCTION public.unban_user IS 'Desbanir usuário (admin).';
 COMMENT ON FUNCTION public.set_report_hidden IS 'Ocultar/mostrar reporte (admin).';

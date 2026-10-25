@@ -1,5 +1,6 @@
 -- 004: triggers to update report status from confirmations
 -- ============================================================================
+-- Depends on: 002 (reports), 003 (report_confirmations)
 
 -- Function to update report confirmation counts and status
 CREATE OR REPLACE FUNCTION public.update_report_from_confirmations()

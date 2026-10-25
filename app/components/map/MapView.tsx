@@ -8,7 +8,7 @@ import { CustomMarker } from "./CustomMarker";
 import { ReportPopup } from "./ReportPopup";
 import { Locate, RefreshCw, Plus, Target, X, Map } from "lucide-react";
 import type { Report, UserProfile } from "./types";
-import { CATEGORY_CONFIG } from "./types";
+import { CATEGORY_CONFIG, REPORT_BASE_XP } from "./types";
 import { fetchReportsInBounds } from "@/lib/supabase/client";
 
 // Fix for Leaflet default marker images
@@ -435,7 +435,7 @@ export function MapView({
       // Transform data to Report type
       const formattedReports: Report[] = data.map((r: any) => ({
         id: r.id,
-        creator_id: r.user_id,
+        user_id: r.user_id,
         latitude: r.latitude,
         longitude: r.longitude,
         category: r.category,
@@ -445,16 +445,13 @@ export function MapView({
         photo_thumbnail_url: r.image_url,
         image_url: r.image_url,
         status: r.status,
-        confirmations_count: r.confirmations_continua || 0,
-        denials_count: 0,
-        score_awarded: r.points || 10,
+        confirmations_continua: r.confirmations_continua || 0,
+        confirmations_resolvido: r.confirmations_resolvido || 0,
         created_at: r.created_at,
         updated_at: r.updated_at,
         creator_username: r.creator_username,
         creator_avatar: r.creator_avatar,
         creator_level: r.creator_level,
-        confirmations_continua: r.confirmations_continua || 0,
-        confirmations_resolvido: r.confirmations_resolvido || 0,
         resolved_at: r.resolved_at,
       }));
 

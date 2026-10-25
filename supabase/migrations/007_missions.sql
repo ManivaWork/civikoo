@@ -1,5 +1,6 @@
 -- 007: missions system
 -- ============================================================================
+-- Depends on: 001 (profiles), 002 (reports), 003 (report_confirmations), 005 (award_reward)
 
 CREATE TYPE public.mission_type AS ENUM ('diaria', 'semanal');
 CREATE TYPE public.mission_metric AS ENUM ('reportes', 'confirmacoes', 'resolucoes', 'reportes_categoria');

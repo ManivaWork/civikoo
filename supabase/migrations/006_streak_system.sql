@@ -1,19 +1,6 @@
 -- 006: streak system (streak columns in profiles + milestones table)
 -- ============================================================================
-
--- Streak columns already added in 001, ensure they exist
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='streak_count') THEN
-    ALTER TABLE public.profiles ADD COLUMN streak_count int NOT NULL DEFAULT 0;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='best_streak') THEN
-    ALTER TABLE public.profiles ADD COLUMN best_streak int NOT NULL DEFAULT 0;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='last_active_date') THEN
-    ALTER TABLE public.profiles ADD COLUMN last_active_date date;
-  END IF;
-END $$;
+-- Depends on: 001 (profiles with streak columns), 005 (award_reward function)
 
 -- Milestones table
 CREATE TABLE IF NOT EXISTS public.user_streak_milestones (

@@ -1,10 +1,6 @@
 -- 011: Report images & Storage
 -- ============================================================================
-
--- Storage bucket for report images
--- Note: This creates the bucket via SQL. In Supabase, run this in Dashboard > Storage > New bucket
--- Or use the Supabase CLI: supabase storage create report-images
--- The bucket must be created manually or via Supabase CLI
+-- Depends on: 001 (profiles), 002 (reports)
 
 -- Table to track report images
 CREATE TABLE IF NOT EXISTS public.report_images (

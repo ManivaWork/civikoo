@@ -1,5 +1,6 @@
 -- 009: RPC functions for reports (confirm, flag, nearby, in_bounds)
 -- ============================================================================
+-- Depends on: 001 (profiles), 002 (reports), 003 (report_confirmations), 005 (award_reward)
 
 -- Confirm report (continua/resolvido) with server-side proximity check
 CREATE OR REPLACE FUNCTION public.confirm_report(
@@ -112,9 +113,8 @@ BEGIN
     RETURN QUERY SELECT false, 'Reporte não encontrado', 0, false;
   END IF;
 
-  -- Check already flagged
-  -- (Would need a flags table - for now just update hidden if enough flags)
-  -- Simple approach: 3 flags = hidden
+  -- Check already flagged (using report_confirmations type='flag' as placeholder)
+  -- For a full implementation, a separate flags table would be needed
   v_flag_count := (
     SELECT count(*) FROM public.report_confirmations
     WHERE report_id = p_report_id AND type = 'flag'
@@ -236,7 +236,7 @@ BEGIN
   IF p_since_days IS NOT NULL AND p_since_days > 0 THEN
     v_where := v_where || ' AND r.created_at >= now() - ($' || (array_length(v_params, 1) + 1)::text || ')::interval';
     v_params := v_params || (p_since_days || ' days')::text;
-  END IF
+  END IF;
 
   FOR v_report IN EXECUTE format('
     SELECT
