@@ -133,9 +133,14 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_catalog
 AS $$
+DECLARE
+  v_profile public.profiles;
 BEGIN
-  RETURN QUERY
-  SELECT * FROM public.profiles WHERE id = auth.uid();
+  SELECT * INTO v_profile
+  FROM public.profiles
+  WHERE id = auth.uid();
+
+  RETURN v_profile;
 END;
 $$;
 
