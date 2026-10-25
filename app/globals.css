@@ -107,6 +107,38 @@ body {
   filter: blur(1px);
 }
 
+/* Resolved marker styles */
+.marker-wrapper.resolved .marker-inner {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
+}
+
+.dark .marker-wrapper.resolved .marker-inner {
+  background: linear-gradient(135deg, #14532d 0%, #166534 100%) !important;
+}
+
+.marker-wrapper.resolved .marker-emoji {
+  filter: grayscale(0.3);
+}
+
+.marker-resolved-badge {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 20px;
+  height: 20px;
+  background: #22c55e;
+  color: white;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.4);
+}
+
 /* Cluster marker styles */
 .cluster-marker {
   background: transparent !important;
@@ -244,6 +276,96 @@ body {
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #737373;
+}
+
+/* Safe area insets for notches/home indicator */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+}
+
+/* Prevent page scroll when map is full screen */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure minimum 44px touch targets for all interactive elements */
+button,
+a[role="button"],
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+select,
+textarea,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+input[type="number"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Map container - full screen, no scroll */
+.map-container {
+  height: 100%;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+}
+
+/* Navbar fixed with safe area */
+.navbar-safe {
+  padding-top: var(--safe-area-inset-top);
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+}
+
+/* Bottom sheet with safe area */
+.bottom-sheet-safe {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+/* Install banner animation */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Fade in animation for modals */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
 }
 
 /* Focus styles for accessibility */

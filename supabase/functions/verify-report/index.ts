@@ -2,32 +2,25 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import {
   getSupabaseAdmin,
-  getSupabaseUser,
   getUserIdFromAuth,
-  validateProximity,
   checkRateLimit,
   getRateLimitKey
 } from '../_shared/supabase.ts';
 
 interface VerifyReportRequest {
   report_id: string;
-  type: 'confirmacao' | 'negacao';
+  type: 'continua' | 'resolvido';  // NEW: matches report_confirmations.type
   user_location: {
     latitude: number;
     longitude: number;
     accuracy?: number;
   };
-  notes?: string;
-  photo_url?: string;
 }
 
-const POINTS_PER_VERIFICATION = 5;
-const CONFIRMATIONS_FOR_AUTO_RESOLVE = 3;
-
-// Rate limits: 30 verifications per hour per user
+// Rate limits: 30 confirmations per hour per user
 const VERIFY_RATE_LIMIT = { max: 30, windowMs: 60 * 60 * 1000 };
 
-// Maximum distance for verification (50 meters as requested)
+// Maximum distance for verification (50 meters)
 const MAX_VERIFICATION_DISTANCE = 50;
 
 serve(async (req: Request) => {
@@ -81,16 +74,16 @@ serve(async (req: Request) => {
       );
     }
 
-    // Validate type
-    if (!['confirmacao', 'negacao'].includes(type)) {
+    // Validate type (NEW: 'continua' or 'resolvido')
+    if (!['continua', 'resolvido'].includes(type)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid type. Must be "confirmacao" or "negacao"' }),
+        JSON.stringify({ error: 'Invalid type. Must be "continua" or "resolvido"' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Validate user location
-    const { latitude: userLat, longitude: userLng } = user_location;
+    const { latitude: userLat, longitude: userLng, accuracy } = user_location;
     if (!userLat || !userLng || userLat < -90 || userLat > 90 || userLng < -180 || userLng > 180) {
       return new Response(
         JSON.stringify({ error: 'Invalid user location coordinates' }),
@@ -101,183 +94,70 @@ serve(async (req: Request) => {
     // Initialize Supabase admin client
     const supabaseAdmin = getSupabaseAdmin();
 
-    // Get the report with creator info
-    const { data: report, error: reportError } = await supabaseAdmin
-      .from('reports')
-      .select('id, creator_id, latitude, longitude, status, confirmations_count, denials_count')
-      .eq('id', report_id)
-      .single();
+    // Call the confirm_report RPC (SECURITY DEFINER - does proximity check server-side)
+    const { data: result, error: rpcError } = await supabaseAdmin.rpc('confirm_report', {
+      p_report_id: report_id,
+      p_user_id: userId,
+      p_type: type,
+      p_latitude: userLat,
+      p_longitude: userLng,
+      p_accuracy: accuracy || null,
+    });
 
-    if (reportError || !report) {
+    if (rpcError) {
+      console.error('Confirm report RPC error:', rpcError);
       return new Response(
-        JSON.stringify({ error: 'Report not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Anti-fraud: User cannot verify their own report
-    const { data: verifierProfile } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('auth_user_id', userId)
-      .single();
-
-    if (!verifierProfile) {
-      return new Response(
-        JSON.stringify({ error: 'User profile not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (verifierProfile.id === report.creator_id) {
-      return new Response(
-        JSON.stringify({ error: 'Cannot verify your own report' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Anti-fraud: Validate GPS proximity (50 meters max)
-    const { valid, distance } = validateProximity(
-      userLat,
-      userLng,
-      report.latitude,
-      report.longitude,
-      MAX_VERIFICATION_DISTANCE
-    );
-
-    if (!valid) {
-      return new Response(
-        JSON.stringify({
-          error: 'Location verification failed',
-          message: `You are ${distance}m away from the report location. Maximum allowed: ${MAX_VERIFICATION_DISTANCE}m.`,
-          distance,
-          maxAllowed: MAX_VERIFICATION_DISTANCE,
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Anti-fraud: Check if user already verified this report
-    const { data: existingVerification } = await supabaseAdmin
-      .from('verifications')
-      .select('id, type')
-      .eq('report_id', report_id)
-      .eq('verifier_id', verifierProfile.id)
-      .single();
-
-    if (existingVerification) {
-      return new Response(
-        JSON.stringify({
-          error: 'Already verified',
-          message: `You already ${existingVerification.type === 'confirmacao' ? 'confirmed' : 'denied'} this report`,
-          previousType: existingVerification.type,
-        }),
-        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Anti-fraud: Check if report is in a verifiable state
-    if (!['ativo', 'em_analise'].includes(report.status)) {
-      return new Response(
-        JSON.stringify({
-          error: 'Report not verifiable',
-          message: `Report status is "${report.status}" and cannot be verified`
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Insert verification record
-    const { data: verification, error: verificationError } = await supabaseAdmin
-      .from('verifications')
-      .insert({
-        report_id,
-        verifier_id: verifierProfile.id,
-        type,
-        notes: body.notes?.trim() || null,
-        photo_url: body.photo_url || null,
-        score_awarded: POINTS_PER_VERIFICATION,
-      })
-      .select()
-      .single();
-
-    if (verificationError) {
-      console.error('Verification insert error:', verificationError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create verification' }),
+        JSON.stringify({ error: 'Failed to confirm report' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Update user score for verification
-    const { error: scoreError } = await supabaseAdmin.rpc('increment_user_score', {
-      p_user_id: verifierProfile.id,
-      p_points: POINTS_PER_VERIFICATION,
-      p_activity_type: 'verification',
-      p_reference_id: verification.id,
-    });
+    // RPC returns table with: success, message, distance_m, accuracy_m
+    const confirmationResult = result?.[0];
 
-    if (scoreError) {
-      console.error('Verification score update error:', scoreError);
+    if (!confirmationResult?.success) {
+      return new Response(
+        JSON.stringify({
+          error: confirmationResult?.message || 'Confirmation failed',
+          distance: confirmationResult?.distance_m,
+          accuracy: confirmationResult?.accuracy_m,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Log activity
-    await supabaseAdmin
-      .from('user_activity_log')
-      .insert({
-        user_id: verifierProfile.id,
-        activity_type: 'verification',
-        reference_id: verification.id,
-        points_earned: POINTS_PER_VERIFICATION,
-      });
-
-    // Get updated report counts
+    // Get updated report status and counts
     const { data: updatedReport } = await supabaseAdmin
       .from('reports')
-      .select('confirmations_count, denials_count, status')
+      .select('status, confirmations_continua, confirmations_resolvido')
       .eq('id', report_id)
       .single();
 
-    // Check if report should be auto-resolved (3+ confirmations for resolved reports)
-    let newStatus = report.status;
-    let autoResolved = false;
-
-    if (type === 'confirmacao' && updatedReport) {
-      // Check if this is a confirmation of a resolved report pattern
-      // Actually, the trigger in DB handles status changes based on ratios
-      // But we can also check for explicit auto-resolve condition
-      if (updatedReport.confirmations_count >= CONFIRMATIONS_FOR_AUTO_RESOLVE &&
-          report.status === 'ativo') {
-        // The database trigger will handle status change to 'em_analise'
-        // This is just for response info
-      }
-    }
-
-    // Get updated user score
-    const { data: updatedUser } = await supabaseAdmin
-      .from('users')
-      .select('total_score, level')
-      .eq('id', verifierProfile.id)
+    // Get updated user profile
+    const { data: userProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('xp, coins, level, total_score')
+      .eq('id', userId)
       .single();
 
     return new Response(
       JSON.stringify({
         success: true,
-        verification: {
-          id: verification.id,
-          report_id: verification.report_id,
-          type: verification.type,
-          created_at: verification.created_at,
-          score_awarded: POINTS_PER_VERIFICATION,
+        confirmation: {
+          type,
+          distance_m: confirmationResult.distance_m,
+          created_at: new Date().toISOString(),
         },
         report: {
-          confirmations_count: updatedReport?.confirmations_count || 0,
-          denials_count: updatedReport?.denials_count || 0,
-          status: updatedReport?.status || report.status,
+          status: updatedReport?.status || 'ativo',
+          confirmations_continua: updatedReport?.confirmations_continua || 0,
+          confirmations_resolvido: updatedReport?.confirmations_resolvido || 0,
         },
         user: {
-          new_total_score: updatedUser?.total_score || 0,
-          new_level: updatedUser?.level || 1,
+          xp: userProfile?.xp || 0,
+          coins: userProfile?.coins || 0,
+          level: userProfile?.level || 1,
+          total_score: userProfile?.total_score || 0,
         },
         rateLimit: {
           remaining: rateLimit.remaining,

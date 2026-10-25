@@ -1,19 +1,14 @@
 export type ReportCategory =
   | "buraco_asfalto"
-  | "iluminacao"
-  | "lixo_entulho"
   | "vazamento_agua"
   | "sinalizacao"
-  | "acessibilidade"
-  | "vegetacao"
-  | "mobiliario_urbano"
-  | "outro";
+  | "acessibilidade";
 
 export type ReportStatus = "ativo" | "em_analise" | "em_andamento" | "resolvido" | "recusado";
 
 export interface Report {
   id: string;
-  creator_id: string;
+  user_id: string;  // NEW: user_id instead of creator_id
   latitude: number;
   longitude: number;
   category: ReportCategory;
@@ -21,16 +16,32 @@ export interface Report {
   description: string | null;
   photo_url: string;
   photo_thumbnail_url: string | null;
+  image_url: string | null;  // alias for photo_url
   status: ReportStatus;
-  confirmations_count: number;
-  denials_count: number;
-  score_awarded: number;
+  confirmations_continua: number;  // NEW: replaces confirmations_count
+  confirmations_resolvido: number; // NEW: replaces denials_count
+  points: number;  // NEW: points instead of score_awarded
   created_at: string;
   updated_at: string;
+  resolved_at?: string | null;
+  // Anti-fraude
+  hidden?: boolean;
   // Joined fields
   creator_username?: string;
   creator_avatar?: string;
   creator_level?: number;
+  // Community validation fields
+  distance_m?: number;
+  user_has_confirmed_continua?: boolean;
+  user_has_confirmed_resolvido?: boolean;
+}
+
+export interface ReportFlag {
+  id: string;
+  report_id: string;
+  user_id: string;
+  reason: 'falso' | 'duplicado' | 'ofensivo' | 'outro';
+  created_at: string;
 }
 
 export interface UserProfile {
@@ -39,9 +50,52 @@ export interface UserProfile {
   full_name: string | null;
   avatar_url: string | null;
   level: number;
+  xp: number;          // NEW: xp (never spent)
+  coins: number;       // NEW: coins (spent on items)
+  total_score: number; // NEW: total XP earned (for ranking)
+  streak_count: number;  // NEW: streak_count
+  best_streak: number;   // NEW: best_streak
+  last_active_date?: string | null;
+  title?: string;
+  equipped?: {
+    cabeca?: string | null;
+    corpo?: string | null;
+    acessorio?: string | null;
+    fundo?: string | null;
+  };
+  created_at?: string;
+}
+
+export interface Badge {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  requirement_type: string;
+  requirement_value: Record<string, any>;
+  xp_reward: number;
+  created_at: string;
+  earned_at?: string | null; // null if not earned
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  level: number;
+  xp: number;
   total_score: number;
-  current_streak: number;
-  longest_streak: number;
+  rank: number;
+  streak_count?: number;
+  best_streak?: number;
+  equipped?: {
+    cabeca?: string | null;
+    corpo?: string | null;
+    acessorio?: string | null;
+    fundo?: string | null;
+  };
 }
 
 export const CATEGORY_CONFIG: Record<ReportCategory, { label: string; icon: string; color: string; bgColor: string }> = {
@@ -50,18 +104,6 @@ export const CATEGORY_CONFIG: Record<ReportCategory, { label: string; icon: stri
     icon: "🕳️",
     color: "text-orange-600",
     bgColor: "bg-orange-100 dark:bg-orange-900/30",
-  },
-  iluminacao: {
-    label: "Iluminação",
-    icon: "💡",
-    color: "text-yellow-600",
-    bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
-  },
-  lixo_entulho: {
-    label: "Lixo / Entulho",
-    icon: "🗑️",
-    color: "text-green-600",
-    bgColor: "bg-green-100 dark:bg-green-900/30",
   },
   vazamento_agua: {
     label: "Vazamento de Água",
@@ -81,24 +123,6 @@ export const CATEGORY_CONFIG: Record<ReportCategory, { label: string; icon: stri
     color: "text-purple-600",
     bgColor: "bg-purple-100 dark:bg-purple-900/30",
   },
-  vegetacao: {
-    label: "Vegetação",
-    icon: "🌳",
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
-  },
-  mobiliario_urbano: {
-    label: "Mobiliário Urbano",
-    icon: "🪑",
-    color: "text-indigo-600",
-    bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
-  },
-  outro: {
-    label: "Outro",
-    icon: "📍",
-    color: "text-zinc-600",
-    bgColor: "bg-zinc-100 dark:bg-zinc-900/30",
-  },
 };
 
 export const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bgColor: string }> = {
@@ -110,9 +134,142 @@ export const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string;
 };
 
 export function getCategoryConfig(category: ReportCategory) {
-  return CATEGORY_CONFIG[category] || CATEGORY_CONFIG.outro;
+  return CATEGORY_CONFIG[category] || CATEGORY_CONFIG.acessibilidade;
 }
 
 export function getStatusConfig(status: ReportStatus) {
   return STATUS_CONFIG[status] || STATUS_CONFIG.ativo;
 }
+
+// ========================
+// Items & Avatar
+// ========================
+
+export type ItemSlot = 'cabeca' | 'corpo' | 'acessorio' | 'fundo';
+export type ItemRarity = 'comum' | 'raro' | 'epico';
+
+export interface Item {
+  id: string;
+  code: string;
+  name: string;
+  slot: ItemSlot;
+  rarity: ItemRarity;
+  price_coins: number;
+  min_level: number;
+  asset: string; // SVG key
+  active: boolean;
+  created_at?: string;
+}
+
+export interface UserItem {
+  user_id: string;
+  item_id: string;
+  item?: Item; // joined
+  acquired_at: string;
+}
+
+export interface EquippedItems {
+  cabeca?: string | null; // item code
+  corpo?: string | null;
+  acessorio?: string | null;
+  fundo?: string | null;
+}
+
+export interface UserProfileWithItems extends UserProfile {
+  equipped?: EquippedItems;
+}
+
+export const ITEM_SLOT_LABELS: Record<ItemSlot, string> = {
+  cabeca: 'Cabeça',
+  corpo: 'Corpo',
+  acessorio: 'Acessório',
+  fundo: 'Fundo',
+};
+
+export const ITEM_RARITY_CONFIG: Record<ItemRarity, { label: string; color: string; bgColor: string; borderColor: string }> = {
+  comum: { label: 'Comum', color: 'text-zinc-600', bgColor: 'bg-zinc-100 dark:bg-zinc-800', borderColor: 'border-zinc-300 dark:border-zinc-600' },
+  raro: { label: 'Raro', color: 'text-blue-600', bgColor: 'bg-blue-100 dark:bg-blue-900/30', borderColor: 'border-blue-300 dark:border-blue-700' },
+  epico: { label: 'Épico', color: 'text-purple-600', bgColor: 'bg-purple-100 dark:bg-purple-900/30', borderColor: 'border-purple-300 dark:border-purple-700' },
+};
+
+export function getItemRarityConfig(rarity: ItemRarity) {
+  return ITEM_RARITY_CONFIG[rarity] || ITEM_RARITY_CONFIG.comum;
+}
+
+export function getSlotLabel(slot: ItemSlot) {
+  return ITEM_SLOT_LABELS[slot] || slot;
+}
+
+// ========================
+// Missions & Streak
+// ========================
+
+export type MissionType = 'diaria' | 'semanal';
+export type MissionMetric = 'reportes' | 'confirmacoes' | 'resolucoes' | 'reportes_categoria';
+
+export interface MissionTemplate {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  type: MissionType;
+  metric: MissionMetric;
+  category: string | null;
+  target: number;
+  reward_xp: number;
+  reward_coins: number;
+  active: boolean;
+  created_at: string;
+}
+
+export interface UserMission {
+  id: string;
+  user_id: string;
+  template_id: string;
+  period_start: string; // date as string
+  progress: number;
+  completed_at: string | null;
+  claimed_at: string | null;
+  created_at: string;
+  template?: MissionTemplate; // joined
+}
+
+export interface UserMissionWithTemplate extends UserMission {
+  template: MissionTemplate;
+  is_completed: boolean;
+  is_claimed: boolean;
+  can_claim: boolean;
+}
+
+export interface StreakInfo {
+  streak_count: number;
+  best_streak: number;
+  last_active_date: string | null;
+  next_milestone: number | null; // dias do próximo marco (3, 7, 14, 30)
+  days_to_next_milestone: number | null;
+  milestones_earned: number[]; // [3, 7, ...]
+}
+
+export const MISSION_TYPE_LABELS: Record<MissionType, string> = {
+  diaria: 'Diária',
+  semanal: 'Semanal',
+};
+
+export const MISSION_METRIC_LABELS: Record<MissionMetric, string> = {
+  reportes: 'Reportes',
+  confirmacoes: 'Confirmações "Continua"',
+  resolucoes: 'Confirmações "Resolvido"',
+  reportes_categoria: 'Reportes por Categoria',
+};
+
+export function getMissionTypeLabel(type: MissionType) {
+  return MISSION_TYPE_LABELS[type] || type;
+}
+
+export function getMissionMetricLabel(metric: MissionMetric) {
+  return MISSION_METRIC_LABELS[metric] || metric;
+}
+
+// Streak milestones
+export const STREAK_MILESTONES = [3, 7, 14, 30] as const;
+export type StreakMilestone = typeof STREAK_MILESTONES[number];

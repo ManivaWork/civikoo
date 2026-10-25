@@ -26,14 +26,9 @@ interface AddReportRequest {
 
 const VALID_CATEGORIES = [
   'buraco_asfalto',
-  'iluminacao',
-  'lixo_entulho',
   'vazamento_agua',
   'sinalizacao',
   'acessibilidade',
-  'vegetacao',
-  'mobiliario_urbano',
-  'outro',
 ];
 
 const POINTS_PER_REPORT = 10;
@@ -145,29 +140,15 @@ serve(async (req: Request) => {
       }
     }
 
-    // Initialize Supabase clients
+    // Initialize Supabase admin client (service role - bypasses RLS)
     const supabaseAdmin = getSupabaseAdmin();
-    const supabaseUser = getSupabaseUser(authHeader!.replace('Bearer ', ''));
 
-    // Get user profile to check if exists and get current score
-    const { data: userProfile, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id, total_score, level')
-      .eq('auth_user_id', userId)
-      .single();
-
-    if (userError || !userProfile) {
-      return new Response(
-        JSON.stringify({ error: 'User profile not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Insert the report
+    // Insert the report using new schema: user_id = auth.uid()
+    // The database trigger will sync location from lat/lng
     const { data: report, error: reportError } = await supabaseAdmin
       .from('reports')
       .insert({
-        creator_id: userProfile.id,
+        user_id: userId,  // NEW: user_id instead of creator_id
         latitude,
         longitude,
         category,
@@ -176,7 +157,6 @@ serve(async (req: Request) => {
         photo_url,
         photo_thumbnail_url: body.photo_thumbnail_url || photo_url,
         status: 'ativo',
-        score_awarded: POINTS_PER_REPORT,
       })
       .select()
       .single();
@@ -189,29 +169,27 @@ serve(async (req: Request) => {
       );
     }
 
-    // Update user score and level atomically using RPC
-    const { error: scoreError } = await supabaseAdmin.rpc('increment_user_score', {
-      p_user_id: userProfile.id,
-      p_points: POINTS_PER_REPORT,
-      p_activity_type: 'report_created',
-      p_reference_id: report.id,
+    // Award XP/coins via server-side function (SECURITY DEFINER)
+    const { error: rewardError } = await supabaseAdmin.rpc('award_reward', {
+      p_user_id: userId,
+      p_source: 'report_created',
+      p_xp: 50,
+      p_coins: 10,
+      p_ref_type: 'report',
+      p_ref_id: report.id,
     });
 
-    if (scoreError) {
-      console.error('Score update error:', scoreError);
+    if (rewardError) {
+      console.error('Reward error:', rewardError);
       // Don't fail the request - report was created successfully
-      // Log for monitoring
     }
 
-    // Log activity for audit trail
-    await supabaseAdmin
-      .from('user_activity_log')
-      .insert({
-        user_id: userProfile.id,
-        activity_type: 'report_created',
-        reference_id: report.id,
-        points_earned: POINTS_PER_REPORT,
-      });
+    // Get updated user profile for response
+    const { data: userProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('xp, coins, level, total_score')
+      .eq('id', userId)
+      .single();
 
     // Return success with new report data
     return new Response(
@@ -225,11 +203,12 @@ serve(async (req: Request) => {
           title: report.title,
           status: report.status,
           created_at: report.created_at,
-          score_awarded: POINTS_PER_REPORT,
         },
         user: {
-          new_total_score: userProfile.total_score + POINTS_PER_REPORT,
-          new_level: userProfile.level, // Will be updated by RPC
+          xp: userProfile?.xp || 0,
+          coins: userProfile?.coins || 0,
+          level: userProfile?.level || 1,
+          total_score: userProfile?.total_score || 0,
         },
         rateLimit: {
           remaining: rateLimit.remaining,

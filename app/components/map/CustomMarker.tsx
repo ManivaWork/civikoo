@@ -2,7 +2,7 @@
 
 import { Marker } from "react-leaflet";
 import { DivIcon } from "leaflet";
-import { getCategoryConfig, type Report, type ReportCategory } from "./types";
+import { getCategoryConfig, getStatusConfig, type Report, type ReportCategory } from "./types";
 
 interface CustomMarkerProps {
   report: Report;
@@ -12,14 +12,23 @@ interface CustomMarkerProps {
 
 export function CustomMarker({ report, isSelected, onClick }: CustomMarkerProps) {
   const config = getCategoryConfig(report.category);
+  const statusConfig = getStatusConfig(report.status);
+
+  // For resolved reports, use a different style (gray/green)
+  const isResolved = report.status === "resolvido";
+  const markerColor = isResolved ? "green" : config.color.replace("text-", "");
+  const markerBgColor = isResolved ? "bg-green-100 dark:bg-green-900/30" : config.bgColor;
+  const markerTextColor = isResolved ? "text-green-600 dark:text-green-400" : config.color;
+  const markerEmoji = isResolved ? "✅" : config.icon;
 
   const icon = new DivIcon({
     className: "custom-marker",
     html: `
-      <div class="marker-wrapper ${isSelected ? "selected" : ""}" style="--marker-color: ${config.color.replace("text-", "")};">
-        <div class="marker-inner ${config.bgColor} ${config.color}">
-          <span class="marker-emoji">${config.icon}</span>
-          ${report.confirmations_count > 0 ? `<span class="marker-badge">${report.confirmations_count}</span>` : ""}
+      <div class="marker-wrapper ${isSelected ? "selected" : ""} ${isResolved ? "resolved" : ""}" style="--marker-color: ${markerColor};">
+        <div class="marker-inner ${markerBgColor} ${markerTextColor}">
+          <span class="marker-emoji">${markerEmoji}</span>
+          ${report.confirmations_continua && report.confirmations_continua > 0 ? `<span class="marker-badge">${report.confirmations_continua}</span>` : ""}
+          ${isResolved ? `<span class="marker-resolved-badge">✓</span>` : ""}
         </div>
         <div class="marker-shadow"></div>
       </div>
@@ -36,7 +45,7 @@ export function CustomMarker({ report, isSelected, onClick }: CustomMarkerProps)
       eventHandlers={{
         click: () => onClick(report),
       }}
-      zIndexOffset={isSelected ? 1000 : report.confirmations_count * 10}
+      zIndexOffset={isSelected ? 1000 : (report.confirmations_continua || 0) * 10}
     />
   );
 }
