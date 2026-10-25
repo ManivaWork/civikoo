@@ -1,0 +1,109 @@
+﻿node.exe : Warning: supabase db push will target the local database by default in the next major version. Pass --linked to keep targeting the linked project.
+No linha:1 caractere:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: supaba...linked project.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Initialising login role...
+Connecting to remote database...
+Do you want to push these migrations to the remote database?
+ ÔÇó 009_report_rpcs.sql
+ ÔÇó 010_anti_fraud_spam.sql
+ ÔÇó 011_report_image_storage.sql
+ ÔÇó 012_rls_policies.sql
+ ÔÇó 013_ranking_leaderboard.sql
+ ÔÇó 014_admin_cron_utils.sql
+ [Y/n] y
+Applying migration 009_report_rpcs.sql...
+ERROR: input parameters after one with a default value must also have defaults (SQLSTATE 42P13)
+At statement: 0
+-- 009: RPC functions for reports (confirm, flag, nearby, in_bounds)
+-- ============================================================================
+-- Depends on: 001 (profiles), 002 (reports), 003 (report_confirmations), 005 (award_reward)
+
+-- Confirm report (continua/resolvido) with server-side proximity check
+CREATE OR REPLACE FUNCTION public.confirm_report(
+  p_report_id uuid,
+  p_user_id uuid DEFAULT NULL,
+  p_type text, -- 'continua' or 'resolvido'
+  p_latitude double precision,
+  p_longitude double precision,
+  p_accuracy double precision DEFAULT NULL
+)
+RETURNS TABLE (success boolean, message text, distance_m double precision, accuracy_m double precision)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_catalog
+AS $$
+DECLARE
+  v_user_id uuid := COALESCE(p_user_id, auth.uid());
+  v_report public.reports;
+  v_distance double precision;
+  v_already_confirmed boolean;
+BEGIN
+  -- Validate type
+  IF p_type NOT IN ('continua', 'resolvido') THEN
+    RETURN QUERY SELECT false, 'Tipo inv├ílido', 0, 0;
+  END IF;
+
+  -- Get report
+  SELECT * INTO v_report FROM public.reports WHERE id = p_report_id;
+  IF v_report IS NULL OR v_report.hidden THEN
+    RETURN QUERY SELECT false, 'REPORTE_NAO_ENCONTRADO: Reporte n├úo encontrado', 0, 0;
+  END IF;
+
+  -- Can't confirm own report
+  IF v_report.user_id = v_user_id THEN
+    RETURN QUERY SELECT false, 'N├úo pode confirmar pr├│prio reporte', 0, 0;
+  END IF;
+
+  -- Check distance (50m)
+  v_distance := ST_Distance(
+    v_report.location,
+    ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326)::geography
+  );
+  IF v_distance > 50 THEN
+    RETURN QUERY SELECT false, 'FORA_DE_ALCANCE: Voc├¬ precisa estar a at├® 50m do local', v_distance, p_accuracy;
+  END IF;
+
+  -- Check accuracy
+  IF p_accuracy IS NOT NULL AND p_accuracy > 100 THEN
+    RETURN QUERY SELECT false, 'GPS_PRECISAO_BAIXA: Precis├úo do GPS muito baixa (>100m)', v_distance, p_accuracy;
+  END IF;
+
+  -- Check already confirmed
+  SELECT EXISTS (
+    SELECT 1 FROM public.report_confirmations
+    WHERE report_id = p_report_id AND user_id = v_user_id AND type = p_type
+  ) INTO v_already_confirmed;
+  IF v_already_confirmed THEN
+    RETURN QUERY SELECT false, 'JA_CONFIRMOU: Voc├¬ j├í confirmou este reporte', v_distance, p_accuracy;
+  END IF;
+
+  -- Rate limit: 30 confirmations per 24h
+  IF (SELECT count(*) FROM public.report_confirmations WHERE user_id = v_user_id AND created_at >= now() - interval '24 hours') >= 30 THEN
+    RETURN QUERY SELECT false, 'LIMITE_CONFIRMACOES: Limite de 30 confirma├º├Áes por dia atingido', v_distance, p_accuracy;
+  END IF;
+
+  -- Cooldown: 30 seconds
+  IF EXISTS (SELECT 1 FROM public.report_confirmations WHERE user_id = v_user_id AND created_at >= now() - interval '30 seconds') THEN
+    RETURN QUERY SELECT false, 'COOLDOWN_CONFIRMACAO: Aguarde 30 segundos', v_distance, p_accuracy;
+  END IF;
+
+  -- Insert confirmation
+  INSERT INTO public.report_confirmations (report_id, user_id, type, user_lat, user_lng, accuracy)
+  VALUES (p_report_id, v_user_id, p_type, p_latitude, p_longitude, p_accuracy);
+
+  -- Award reward
+  IF p_type = 'continua' THEN
+    PERFORM public.award_reward(v_user_id, 'confirmation_continua', 10, 5, 'report', p_report_id);
+  ELSE
+    PERFORM public.award_reward(v_user_id, 'confirmation_resolvido', 50, 20, 'report', p_report_id);
+  END IF;
+
+  RETURN QUERY SELECT true, 'Confirmado com sucesso', v_distance, p_accuracy;
+  RETURN;
+END;
+$$
+Try rerunning the command with --debug to troubleshoot the error.
