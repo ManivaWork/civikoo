@@ -2,15 +2,18 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Map } from 'lucide-react';
+import { Map, X } from 'lucide-react';
 import { useSession } from '@/lib/auth';
 import { Avatar, AvatarPreview, MiniAvatar, ItemSlot, EquippedItems, UserItem } from '@/app/components/avatar';
 import { fetchUserItems, equipItem } from '@/lib/supabase/client';
 import { ITEM_SLOT_LABELS, getSlotLabel } from '@/app/components/map/types';
 import { useToast } from '@/app/components/ui/Toast';
-import { BottomNavigation } from '@/app/components/ui/BottomNavigation';
 
-export default function ArmarioPage() {
+interface ArmarioPanelProps {
+  onClose: () => void;
+}
+
+export function ArmarioPanel({ onClose }: ArmarioPanelProps) {
   const { user, profile } = useSession();
   const { show } = useToast();
   const [userItems, setUserItems] = useState<UserItem[]>([]);
@@ -18,6 +21,11 @@ export default function ArmarioPage() {
   const [equipped, setEquipped] = useState<EquippedItems>(profile?.equipped ?? {});
   const [activeSlot, setActiveSlot] = useState<ItemSlot>('cabeca');
   const [equipping, setEquipping] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -35,8 +43,8 @@ export default function ArmarioPage() {
   }, [user, profile?.equipped, show]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (isReady) loadData();
+  }, [loadData, isReady]);
 
   const handleEquip = async (itemCode: string | null, slot: ItemSlot) => {
     if (!user) return;
@@ -65,11 +73,62 @@ export default function ArmarioPage() {
 
   const slots: ItemSlot[] = ['cabeca', 'corpo', 'acessorio', 'fundo'];
 
+  if (!user || !profile) {
+    return (
+      <div className="fixed inset-0 z-50 bg-zinc-950 animate-slide-up flex flex-col">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
+          <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                <Map className="w-5 h-5 text-white" aria-hidden="true" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold text-white">Civikoo</h1>
+                <p className="text-xs text-zinc-500">Armário</p>
+              </div>
+            </Link>
+            <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+        <main className="flex-1 pt-20 pb-24 px-4 max-w-[430px] mx-auto w-full">
+          <div className="text-center py-16">
+            <div className="relative inline-flex items-center justify-center mb-6">
+              <div className="absolute inset-0 bg-amber-500/10 rounded-full blur-xl animate-pulse" />
+              <div className="relative w-24 h-24 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                <Map className="w-10 h-10 text-zinc-600" aria-hidden="true" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-3">Faça login para acessar o Armário</h2>
+            <p className="text-zinc-400 mb-8 max-w-md mx-auto">
+              Entre para gerenciar seus itens e personalizar seu avatar.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs mx-auto">
+              <Link
+                href="/login"
+                className="flex-1 px-6 py-3 text-center text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                Entrar
+              </Link>
+              <Link
+                href="/cadastro"
+                className="flex-1 px-6 py-3 text-center text-sm font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors border border-amber-200 flex items-center justify-center gap-2"
+              >
+                Cadastrar
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-zinc-950 animate-slide-up flex flex-col">
       {/* Top Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
-        <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
               <Map className="w-5 h-5 text-white" aria-hidden="true" />
@@ -79,29 +138,13 @@ export default function ArmarioPage() {
               <p className="text-xs text-zinc-500">Armário</p>
             </div>
           </Link>
-
-          <Link
-            href="/perfil"
-            className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
-            aria-label="Meu perfil"
-          >
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
-                <span className="text-white font-bold text-lg">
-                  {profile?.username?.charAt(0).toUpperCase() || "?"}
-                </span>
-              </div>
-            )}
-            <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
-              {profile?.level ?? 1}
-            </span>
-          </Link>
+          <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" aria-label="Fechar">
+            <X className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+      <main className="flex-1 pt-20 pb-24 px-4 max-w-[430px] mx-auto w-full">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Armário</h1>
@@ -148,7 +191,7 @@ export default function ArmarioPage() {
           <div className="text-center py-12 text-zinc-500">
             <div className="text-4xl mb-2">📦</div>
             <p>Você não possui itens para <strong>{getSlotLabel(activeSlot)}</strong>.</p>
-            <p className="text-sm mt-1">Visite a <Link href="/loja" className="text-amber-400 underline">Loja</Link> para comprar novos itens!</p>
+            <p className="text-sm mt-1">Visite a <button onClick={onClose} className="text-amber-400 underline">Loja</button> para comprar novos itens!</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -205,8 +248,6 @@ export default function ArmarioPage() {
           </div>
         )}
       </main>
-
-      <BottomNavigation />
     </div>
   );
 }

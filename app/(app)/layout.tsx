@@ -1,21 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Suspense } from "react";
-import dynamic from "next/dynamic";
+import { useState, useCallback, Suspense, useEffect } from "react";
 import Link from "next/link";
-import { MapPin, LogIn, UserPlus, Filter, Settings, Map } from "lucide-react";
-import { BottomNavigation } from "./components/ui/BottomNavigation";
-import { ToastContainer } from "./components/ui/Toast";
-import { FirstReportWarning } from "./components/ui/FirstReportWarning";
-import { ReportBottomSheet } from "./components/ui/ReportBottomSheet";
-import { FilterBottomSheet } from "./components/ui/FilterBottomSheet";
-import { SessionProvider, useSession } from "@/lib/auth";
-import type { Report, UserProfile, ReportCategory, ReportStatus } from "./components/map/types";
-import { REPORT_BASE_XP, CATEGORY_DISPLAY_POINTS } from "./components/map/types";
+import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
+import { MapPin, MessageSquare, Trophy, User, Bell, Store, Shirt, Target, RotateCcw, Map, X, ChevronDown, ChevronUp } from "lucide-react";
+import { useSession } from "@/lib/auth";
+import { ReportBottomSheet } from "@/app/components/ui/ReportBottomSheet";
+import { ToastContainer } from "@/app/components/ui/Toast";
+import { FirstReportWarning } from "@/app/components/ui/FirstReportWarning";
+import { BottomNavigation } from "@/app/components/ui/BottomNavigation";
+import type { Report, UserProfile, ReportCategory, ReportStatus } from "@/app/components/map/types";
 import { createClient } from "@/lib/supabase/client";
 import { fetchReportsInBounds } from "@/lib/supabase/client";
+import { REPORT_BASE_XP, CATEGORY_DISPLAY_POINTS } from "@/app/components/map/types";
 
-const MapView = dynamic(() => import("./components/map/MapView").then((mod) => mod.MapView), {
+const MapView = dynamic(() => import("@/app/components/map/MapView").then((mod) => mod.MapView), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
@@ -24,7 +24,43 @@ const MapView = dynamic(() => import("./components/map/MapView").then((mod) => m
   ),
 });
 
-// Mock data for demonstration (fallback when Supabase not configured) - NEW SCHEMA
+// Panel components - loaded dynamically
+const FeedPanel = dynamic(() => import("@/app/(app)/panels/FeedPanel").then((mod) => mod.FeedPanel), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>,
+});
+
+const RankingPanel = dynamic(() => import("@/app/(app)/panels/RankingPanel").then((mod) => mod.RankingPanel), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>,
+});
+
+const PerfilPanel = dynamic(() => import("@/app/(app)/panels/PerfilPanel").then((mod) => mod.PerfilPanel), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>,
+});
+
+const NotificacoesPanel = dynamic(() => import("@/app/(app)/panels/NotificacoesPanel").then((mod) => mod.NotificacoesPanel), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>,
+});
+
+const LojaPanel = dynamic(() => import("@/app/(app)/panels/LojaPanel").then((mod) => mod.LojaPanel), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>,
+});
+
+const ArmarioPanel = dynamic(() => import("@/app/(app)/panels/ArmarioPanel").then((mod) => mod.ArmarioPanel), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>,
+});
+
+const MissoesPanel = dynamic(() => import("@/app/(app)/panels/MissoesPanel").then((mod) => mod.MissoesPanel), {
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>,
+});
+
+// Mock data for demonstration (fallback when Supabase not configured)
 const mockReports: Report[] = [
   {
     id: "1",
@@ -204,14 +240,13 @@ function toUserProfile(profile: any): UserProfile | null {
 }
 
 function TopBar({ profile, userLocation }: { profile: UserProfile | null; userLocation: { lat: number; lng: number } | null }) {
-  if (!profile) return null;
-
-  const xpForNextLevel = getXpForNextLevel(profile.level);
-  const xpProgress = (profile.total_score % xpForNextLevel) / xpForNextLevel;
+  // Always render top bar, show placeholder if no profile
+  const xpForNextLevel = profile ? getXpForNextLevel(profile.level) : 100;
+  const xpProgress = profile ? (profile.total_score % xpForNextLevel) / xpForNextLevel : 0;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
-      <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
+    <header className="absolute top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
+      <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between w-full">
         {/* Left: Logo + Location */}
         <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
@@ -229,76 +264,129 @@ function TopBar({ profile, userLocation }: { profile: UserProfile | null; userLo
 
         {/* Right: Level/XP/Coins + Avatar */}
         <div className="flex items-center gap-3">
-          {/* XP Bar + Level + Coins */}
-          <div className="hidden md:flex items-center gap-4 pr-2">
-            {/* Level */}
-            <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
-              <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/20">
-                <span className="text-xs font-bold text-amber-400">{profile.level}</span>
+          {profile ? (
+            <>
+              {/* XP Bar + Level + Coins */}
+              <div className="hidden md:flex items-center gap-4 pr-2">
+                {/* Level */}
+                <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+                  <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/20">
+                    <span className="text-xs font-bold text-amber-400">{profile.level}</span>
+                  </div>
+                </div>
+                {/* XP Progress */}
+                <div className="relative w-32 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
+                    style={{ width: `${xpProgress * 100}%` }}
+                  />
+                </div>
+                {/* Coins */}
+                <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+                  <span className="text-amber-400 text-sm font-bold">{profile.coins}</span>
+                  <span className="text-zinc-500 text-xs">moedas</span>
+                </div>
               </div>
-            </div>
-            {/* XP Progress */}
-            <div className="relative w-32 h-2 bg-zinc-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
-                style={{ width: `${xpProgress * 100}%` }}
-              />
-            </div>
-            {/* Coins */}
-            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
-              <span className="text-amber-400 text-sm font-bold">{profile.coins}</span>
-              <span className="text-zinc-500 text-xs">moedas</span>
-            </div>
-          </div>
 
-          {/* Avatar Button */}
-          <Link
-            href="/perfil"
-            className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
-            aria-label="Meu perfil"
-          >
-            {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
-                <span className="text-white font-bold text-lg">
-                  {profile.username?.charAt(0).toUpperCase() || "?"}
+              {/* Avatar Button */}
+              <Link
+                href="/perfil"
+                className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
+                aria-label="Meu perfil"
+              >
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
+                    <span className="text-white font-bold text-lg">
+                      {profile.username?.charAt(0).toUpperCase() || "?"}
+                    </span>
+                  </div>
+                )}
+                {/* Level badge on avatar */}
+                <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
+                  {profile.level}
                 </span>
+              </Link>
+            </>
+          ) : (
+            // Placeholder when profile not loaded yet
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-4 pr-2 text-zinc-600 dark:text-zinc-400">
+                <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+                  <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-zinc-800">
+                    <span className="text-xs font-bold text-zinc-500">–</span>
+                  </div>
+                </div>
+                <div className="relative w-32 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-zinc-700 rounded-full animate-pulse" style={{ width: '50%' }} />
+                </div>
+                <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+                  <span className="text-zinc-500 text-sm font-bold">–</span>
+                  <span className="text-zinc-500 text-xs">moedas</span>
+                </div>
               </div>
-            )}
-            {/* Level badge on avatar */}
-            <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
-              {profile.level}
-            </span>
-          </Link>
+              <div className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center animate-pulse">
+                <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                  <span className="text-zinc-500 font-bold text-lg">?</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
   );
 }
 
-function HomeContent() {
+// Tab configuration
+const TABS = [
+  { href: "/", icon: MapPin, label: "Mapa", activeIcon: MapPin },
+  { href: "/feed", icon: MessageSquare, label: "Feed", activeIcon: MessageSquare },
+  { href: "/ranking", icon: Trophy, label: "Ranking", activeIcon: Trophy },
+  { href: "/loja", icon: Store, label: "Loja", activeIcon: Store },
+  { href: "/perfil", icon: User, label: "Perfil", activeIcon: User },
+] as const;
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { user, profile, loading: authLoading } = useSession();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [userAccuracy, setUserAccuracy] = useState<number | null>(null);
   const [reports, setReports] = useState<Report[]>(mockReports);
   const [isReportSheetOpen, setIsReportSheetOpen] = useState(false);
-  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isFetchingReports, setIsFetchingReports] = useState(false);
   const [totalReports, setTotalReports] = useState(0);
   const [filteredReportsCount, setFilteredReportsCount] = useState(0);
   const [mapBounds, setMapBounds] = useState<{ minLat: number; minLng: number; maxLat: number; maxLng: number } | null>(null);
   const [viewportReports, setViewportReports] = useState<Report[]>([]);
   const [hasLoadedViewport, setHasLoadedViewport] = useState(false);
+  const [activePanel, setActivePanel] = useState<string | null>(null);
 
-  // Stable filters reference - only recreate when values actually change
+  // Stable filters reference
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const filtersRef = useRef(filters);
-  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  const filtersRef = { current: filters };
+  filtersRef.current = filters;
+
+  // Determine active panel based on pathname
+  const getActivePanel = useCallback((path: string) => {
+    if (path === "/" || path === "") return null; // Map view - no panel
+    const panelMap: Record<string, string> = {
+      "/feed": "feed",
+      "/ranking": "ranking",
+      "/perfil": "perfil",
+      "/notificacoes": "notificacoes",
+      "/loja": "loja",
+      "/armario": "armario",
+      "/missoes": "missoes",
+    };
+    return panelMap[path] || null;
+  }, []);
+
+  // Update active panel when pathname changes
+  useEffect(() => {
+    setActivePanel(getActivePanel(pathname));
+  }, [pathname, getActivePanel]);
 
   // Get user location on mount
   useEffect(() => {
@@ -398,17 +486,16 @@ function HomeContent() {
     }
   }, [userLocation]);
 
-  // Handle map bounds change - just update bounds, MapView handles fetching
+  // Handle map bounds change - MapView handles fetching, we just update bounds
   const handleMapBoundsChange = useCallback((bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number } | null) => {
     if (!bounds) return;
     setMapBounds(bounds);
   }, []);
 
-  // Fetch user's confirmations for each report (to disable buttons)
+  // Fetch user's confirmations for each report
   const fetchUserConfirmations = useCallback(async (reportIds: string[]) => {
     if (!user || reportIds.length === 0) return;
 
-    // Filter out non-UUID IDs (mock data)
     const validReportIds = reportIds.filter(isValidUuid);
     if (validReportIds.length === 0) return;
 
@@ -431,7 +518,6 @@ function HomeContent() {
       }
 
       if (data) {
-        // Update both reports arrays
         const updateConfirmations = (prevReports: Report[]) =>
           prevReports.map((report) => {
             const userConfirmations = data.filter((c: any) => c.report_id === report.id);
@@ -479,7 +565,6 @@ function HomeContent() {
   const handleRefresh = useCallback(() => {
     if (userLocation) {
       fetchInitialReports();
-      // Also trigger viewport refresh
       if (mapBounds) {
         handleMapBoundsChange(mapBounds);
       }
@@ -535,7 +620,6 @@ function HomeContent() {
 
   const handleOpenReport = useCallback(() => {
     if (!user) return;
-    // Fetch nearby reports for duplicate detection when opening report flow
     fetchInitialReports();
     setIsReportSheetOpen(true);
   }, [user, fetchInitialReports]);
@@ -544,41 +628,75 @@ function HomeContent() {
     setIsReportSheetOpen(false);
   }, []);
 
-  const handleOpenFilterSheet = useCallback(() => {
-    setIsFilterSheetOpen(true);
-  }, []);
-
-  const handleCloseFilterSheet = useCallback(() => {
-    setIsFilterSheetOpen(false);
-  }, []);
-
-  const handleFiltersChange = useCallback((newFilters: typeof filters) => {
-    setFilters(newFilters);
-    // Trigger immediate viewport refresh with new filters
-    if (mapBounds) {
-      handleMapBoundsChange(mapBounds);
-    }
-  }, [mapBounds, handleMapBoundsChange]);
-
   const isLoggedIn = !!user;
-  const hasActiveFilters = filters.categories.length > 0 ||
-    filters.statuses.length !== 2 ||
-    filters.onlyMine ||
-    filters.period !== "30d" ||
-    filters.nearMe !== null;
 
-  // Show loading while auth is loading
+  // Show loading while auth is loading - but still render shell with top/bottom bars
   if (authLoading) {
     return (
-      <div className="relative w-full h-screen bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+      <div className="relative flex flex-col w-full h-[100dvh] max-w-[430px] mx-auto transform-gpu bg-zinc-950" style={{ backgroundColor: '#0B0B10' }}>
+        {/* Map area - flex:1, shows spinner */}
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          <div className="absolute inset-0 bg-zinc-950 flex items-center justify-center z-10">
+            <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+        {/* Bottom Navigation - always visible */}
+        <BottomNavigation />
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    // Show login screen but keep bottom nav for consistency
+    return (
+      <div className="relative flex flex-col w-full h-[100dvh] max-w-[430px] mx-auto transform-gpu bg-zinc-950" style={{ backgroundColor: '#0B0B10' }}>
+        {/* Map area - flex:1, shows login */}
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
+            <div className="text-center px-6">
+              <MapPin className="w-20 h-20 text-zinc-700 mx-auto mb-6" aria-hidden="true" />
+              <h1 className="text-2xl font-bold text-white mb-3">Faça login para continuar</h1>
+              <p className="text-zinc-400 mb-8 max-w-md mx-auto">
+                Você precisa estar logado para usar o Civikoo.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs mx-auto">
+                <Link
+                  href="/login"
+                  className="flex-1 px-6 py-3 text-center text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/cadastro"
+                  className="flex-1 px-6 py-3 text-center text-sm font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors border border-amber-200 flex items-center justify-center gap-2"
+                >
+                  Cadastrar
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Bottom Navigation - always visible */}
+        <BottomNavigation />
+      </div>
+    );
+  }
+
+  const userProfile = toUserProfile(profile) || mockUser;
+
+  return (
+    <div className="relative flex flex-col w-full h-[100dvh] max-w-[430px] mx-auto transform-gpu bg-zinc-950" style={{ backgroundColor: '#0B0B10' }}>
+      {/* Map Area - takes remaining space, contains map + absolute overlays */}
+      <div className="flex-1 min-h-0 relative overflow-hidden">
+        {/* Persistent Map View - always mounted, fills the container */}
         <Suspense fallback={
-          <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+          <div className="absolute inset-0 w-full h-full bg-zinc-950 flex items-center justify-center">
             <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
         }>
           <MapView
             reports={filteredReports}
-            userProfile={mockUser}
+            userProfile={userProfile}
             userLocation={userLocation}
             userAccuracy={userAccuracy}
             onVerify={handleVerify}
@@ -591,144 +709,42 @@ function HomeContent() {
             totalReports={totalReports}
           />
         </Suspense>
-        <div className="fixed inset-0 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm z-40 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="relative w-full h-screen bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
-      {/* Map */}
-      <Suspense fallback={
-        <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      }>
-        <MapView
-          reports={filteredReports}
-          userProfile={toUserProfile(profile) || mockUser}
-          userLocation={userLocation}
-          userAccuracy={userAccuracy}
-          onVerify={handleVerify}
-          onNavigate={handleNavigate}
-          onLocateUser={handleLocateUser}
-          onRefresh={handleRefresh}
-          onNewReport={handleOpenReport}
-          filters={filters}
-          onBoundsChange={handleMapBoundsChange}
-          totalReports={totalReports}
-        />
-      </Suspense>
+        {/* Top Bar - always rendered for logged in users */}
+        <TopBar profile={userProfile} userLocation={userLocation} />
 
-      {/* Top Bar - only for logged in users */}
-      {isLoggedIn && profile && (
-        <TopBar profile={toUserProfile(profile)} userLocation={userLocation} />
-      )}
+        {/* First report warning - absolute positioned near top */}
+        <FirstReportWarning onDismiss={() => {}} />
 
-      {/* Filter Button */}
-      {isLoggedIn && (
-        <button
-          onClick={handleOpenFilterSheet}
-          className={`fixed top-20 right-4 z-20 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-lg ${
-            hasActiveFilters
-              ? "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
-              : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
-          }`}
-          aria-label="Abrir filtros"
-        >
-          <Filter className="w-4 h-4" />
-          <span>Filtros</span>
-          {hasActiveFilters && (
-            <span className="w-4 h-4 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center">
-              ●
-            </span>
-          )}
-        </button>
-      )}
-
-      {/* FAB for new report - only for logged in users */}
-      {isLoggedIn ? (
-        null
-      ) : (
-        // Prompt for visitors
-        <div className="fixed bottom-24 right-6 left-6 md:left-auto md:right-6 md:w-96 z-30">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-5">
-            <div className="flex items-start gap-3">
-              <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-zinc-900 dark:text-white text-sm">
-                  Quer reportar um problema?
-                </h3>
-                <p className="text-zinc-600 dark:text-zinc-400 text-sm mt-1">
-                  Faça login ou cadastre-se para enviar reportes e ganhar recompensas.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                  <Link
-                    href="/login"
-                    className="flex-1 px-4 py-2.5 text-center text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors flex items-center justify-center gap-2"
-                  >
-                    <LogIn className="w-4 h-4" aria-hidden="true" />
-                    Entrar
-                  </Link>
-                  <Link
-                    href="/cadastro"
-                    className="flex-1 px-4 py-2.5 text-center text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-xl transition-colors border border-amber-200 dark:border-amber-800 flex items-center justify-center gap-2"
-                  >
-                    <UserPlus className="w-4 h-4" aria-hidden="true" />
-                    Cadastrar
-                  </Link>
-                </div>
-              </div>
-            </div>
+        {/* Loading overlay */}
+        {isFetchingReports && (
+          <div className="absolute inset-0 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm z-40 flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Report Bottom Sheet */}
+      {/* Bottom Navigation - fixed height, always at bottom */}
+      <BottomNavigation />
+
+      {/* Overlay Panels - render on top of everything (fixed position via portal or high z-index) */}
+      {activePanel === "feed" && <FeedPanel onClose={() => {}} />}
+      {activePanel === "ranking" && <RankingPanel onClose={() => {}} />}
+      {activePanel === "perfil" && <PerfilPanel onClose={() => {}} />}
+      {activePanel === "notificacoes" && <NotificacoesPanel onClose={() => {}} />}
+      {activePanel === "loja" && <LojaPanel onClose={() => {}} />}
+      {activePanel === "armario" && <ArmarioPanel onClose={() => {}} />}
+      {activePanel === "missoes" && <MissoesPanel onClose={() => {}} />}
+
+      {/* Report Bottom Sheet - modal overlay */}
       <ReportBottomSheet
         isOpen={isReportSheetOpen}
         onClose={handleCloseReportSheet}
         initialPosition={userLocation}
       />
 
-      {/* Filter Bottom Sheet */}
-      <FilterBottomSheet
-        isOpen={isFilterSheetOpen}
-        onClose={handleCloseFilterSheet}
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        userLocation={userLocation}
-        totalReports={totalReports}
-        filteredReports={filteredReportsCount || filteredReports.length}
-      />
-
-      {/* Toast notifications */}
+      {/* Toast notifications - top layer */}
       <ToastContainer />
-
-      {/* First report warning */}
-      <FirstReportWarning onDismiss={() => {}} />
-
-      {/* Loading overlay */}
-      {isFetchingReports && (
-        <div className="fixed inset-0 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm z-40 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-
-      {/* Bottom Navigation */}
-      <BottomNavigation />
     </div>
-  );
-}
-
-export default function Home() {
-  return (
-    <SessionProvider>
-      <HomeContent />
-    </SessionProvider>
   );
 }

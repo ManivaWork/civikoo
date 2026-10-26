@@ -23,7 +23,7 @@ export function FirstReportWarning({ onDismiss }: { onDismiss: () => void }) {
 
   return (
     <div
-      className="fixed bottom-24 left-4 right-4 md:left-auto md:right-4 md:bottom-24 md:w-80 z-40 animate-slide-up"
+      className="absolute bottom-24 left-4 right-4 md:left-auto md:right-4 md:bottom-24 md:w-80 z-40 animate-slide-up"
       role="alert"
     >
       <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 shadow-lg flex items-start gap-3">

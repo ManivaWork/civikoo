@@ -149,7 +149,7 @@ function LocateButton({ onLocate, userLocation }: { onLocate: () => void; userLo
   return (
     <button
       onClick={onLocate}
-      className={`fixed bottom-24 right-6 z-20 w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-lg border border-zinc-200 dark:border-zinc-700 transition-all hover:shadow-xl ${
+      className={`absolute bottom-24 right-6 z-20 w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-lg border border-zinc-200 dark:border-zinc-700 transition-all hover:shadow-xl ${
         userLocation ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700"
       }`}
       aria-label={userLocation ? "Sua localização" : "Localizar-me"}
@@ -163,7 +163,7 @@ function LayerToggle({ onRefresh }: { onRefresh: () => void }) {
   return (
     <button
       onClick={onRefresh}
-      className="fixed bottom-24 left-6 z-20 w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:shadow-xl transition-all"
+      className="absolute bottom-24 left-6 z-20 w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:shadow-xl transition-all"
       aria-label="Atualizar reportes"
     >
       <RefreshCw className="w-5 h-5" aria-hidden="true" />
@@ -175,7 +175,7 @@ function ReportButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-amber-500 flex items-center justify-center shadow-lg border-4 border-white dark:border-zinc-900 transition-all hover:bg-amber-600 hover:shadow-xl hover:scale-105 active:scale-95"
+      className="absolute bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-amber-500 flex items-center justify-center shadow-lg border-4 border-white dark:border-zinc-900 transition-all hover:bg-amber-600 hover:shadow-xl hover:scale-105 active:scale-95"
       aria-label="Novo reporte"
     >
       <Plus className="w-7 h-7 text-white" aria-hidden="true" />
@@ -184,6 +184,7 @@ function ReportButton({ onClick }: { onClick: () => void }) {
 }
 
 function Legend() {
+  const [isOpen, setIsOpen] = useState(false);
   const categories = [
     "buraco_asfalto",
     "iluminacao",
@@ -197,21 +198,46 @@ function Legend() {
   ] as const;
 
   return (
-    <div className="fixed bottom-6 left-6 z-20 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-zinc-200/50 dark:border-zinc-800/50 max-h-[60vh] overflow-y-auto">
-      <p className="text-xs font-semibold text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">Legenda</p>
-      <div className="flex flex-col gap-2">
-        {categories.map((cat) => {
-          const config = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.outro;
-          return (
-            <div key={cat} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor}`}>
-                <span className="text-lg">{config.icon}</span>
-              </div>
-              <span className="text-sm text-zinc-700 dark:text-zinc-300">{config.label}</span>
-            </div>
-          );
-        })}
-      </div>
+    <div className="absolute bottom-6 left-6 z-20">
+      {/* Toggle button when collapsed */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="w-10 h-10 rounded-xl bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm flex items-center justify-center shadow-lg border border-zinc-200/50 dark:border-zinc-800/50 transition-all hover:shadow-xl"
+          aria-label="Abrir legenda"
+        >
+          <span className="text-lg">🗺️</span>
+        </button>
+      )}
+
+      {/* Expanded legend */}
+      {isOpen && (
+        <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-zinc-200/50 dark:border-zinc-800/50 max-h-[60vh] overflow-y-auto animate-slide-up">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-zinc-900 dark:text-white uppercase tracking-wider">Legenda</p>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              aria-label="Fechar legenda"
+            >
+              <X className="w-4 h-4 text-zinc-500" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {categories.map((cat) => {
+              const config = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.outro;
+              return (
+                <div key={cat} className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor}`}>
+                    <span className="text-lg">{config.icon}</span>
+                  </div>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{config.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -246,7 +272,7 @@ function NearMeButton({
   if (!userLocation) return null;
 
   return (
-    <div className="fixed bottom-80 right-6 z-20">
+    <div className="absolute bottom-80 right-6 z-20">
       {/* Radius selector dropdown */}
       {showRadiusSelector && nearMeFilter && (
         <div className="mb-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-xl p-2 shadow-lg border border-zinc-200/50 dark:border-zinc-800/50">
@@ -309,7 +335,7 @@ function NearMeButton({
 // Loading state overlay
 function LoadingOverlay({ message = "Carregando reportes..." }: { message?: string }) {
   return (
-    <div className="fixed inset-0 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-sm z-30 flex items-center justify-center">
+    <div className="absolute inset-0 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-sm z-30 flex items-center justify-center">
       <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center gap-4 max-w-sm mx-4">
         <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-zinc-700 dark:text-zinc-300 text-center">{message}</p>
@@ -321,7 +347,7 @@ function LoadingOverlay({ message = "Carregando reportes..." }: { message?: stri
 // Empty state
 function EmptyState({ onRefresh, onNewReport }: { onRefresh: () => void; onNewReport: () => void }) {
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center p-4">
+    <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
       <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-zinc-200/50 dark:border-zinc-800/50 max-w-sm text-center mx-4">
         <div className="text-5xl mb-4">🔍</div>
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Nenhum reporte encontrado</h3>
@@ -528,7 +554,7 @@ export function MapView({
   }, [onRefresh]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="absolute inset-0">
       <MapContainer
         center={userLocation ? [userLocation.lat, userLocation.lng] : DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}

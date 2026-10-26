@@ -28,7 +28,6 @@ import { useToast } from "@/app/components/ui/Toast";
 import type { Badge, Report, UserProfile } from "@/app/components/map/types";
 import { CATEGORY_CONFIG, REPORT_BASE_XP } from "@/app/components/map/types";
 import { Avatar } from "@/app/components/avatar";
-import { BottomNavigation } from "@/app/components/ui/BottomNavigation";
 
 const BADGE_ORDER = [
   'primeiro_reporte',
@@ -66,7 +65,11 @@ const DISPLAY_CATEGORIES = [
   "outro",
 ] as const;
 
-export default function PerfilPage() {
+interface PerfilPanelProps {
+  onClose: () => void;
+}
+
+export function PerfilPanel({ onClose }: PerfilPanelProps) {
   const router = useRouter();
   const { user, profile: sessionProfile, loading: authLoading } = useSession();
   const { show: showToast } = useToast();
@@ -81,6 +84,7 @@ export default function PerfilPage() {
   const [usernameError, setUsernameError] = useState("");
   const [pendingXP, setPendingXP] = useState(0);
   const [showBadgeDetail, setShowBadgeDetail] = useState<Badge | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   // Category progress data
   const [categoryProgress, setCategoryProgress] = useState<Record<string, { count: number; resolved: number }>>({});
@@ -173,8 +177,12 @@ export default function PerfilPage() {
   }, [user, showToast]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!authLoading) setIsReady(true);
+  }, [authLoading]);
+
+  useEffect(() => {
+    if (isReady) fetchData();
+  }, [fetchData, isReady]);
 
   // Handle username edit
   const handleSaveUsername = async () => {
@@ -238,19 +246,22 @@ export default function PerfilPage() {
     geral: "Gerais"
   };
 
-  if (authLoading || isLoading) {
+  if (authLoading || !isReady || isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <div className="fixed inset-0 z-50 bg-zinc-950 animate-slide-up flex flex-col">
         <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
-          <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
                 <MapPin className="w-5 h-5 text-white" aria-hidden="true" />
               </div>
             </Link>
+            <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </header>
-        <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+        <main className="flex-1 pt-20 pb-24 px-4 max-w-[430px] mx-auto w-full">
           <div className="animate-pulse space-y-6">
             <div className="h-32 bg-zinc-900 border border-zinc-800 rounded-2xl" />
             <div className="grid grid-cols-3 gap-4">
@@ -259,7 +270,6 @@ export default function PerfilPage() {
             <div className="h-64 bg-zinc-900 border border-zinc-800 rounded-2xl" />
           </div>
         </main>
-        <BottomNavigation />
       </div>
     );
   }
@@ -282,10 +292,10 @@ export default function PerfilPage() {
   const reportsCount = myReports.length;
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-zinc-950 animate-slide-up flex flex-col">
       {/* Top Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
-        <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
               <MapPin className="w-5 h-5 text-white" aria-hidden="true" />
@@ -295,52 +305,14 @@ export default function PerfilPage() {
               <p className="text-xs text-zinc-500">Meu Perfil</p>
             </div>
           </Link>
-
-          <div className="flex items-center gap-3">
-            {/* Level + XP + Coins */}
-            <div className="hidden md:flex items-center gap-4 pr-2">
-              <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
-                <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/20">
-                  <span className="text-xs font-bold text-amber-400">{currentLevel}</span>
-                </div>
-              </div>
-              <div className="relative w-32 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
-                <span className="text-amber-400 text-sm font-bold">{gameProfile?.coins ?? 0}</span>
-                <span className="text-zinc-500 text-xs">moedas</span>
-              </div>
-            </div>
-
-            {/* Avatar */}
-            <Link
-              href="/perfil"
-              className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
-              aria-label="Meu perfil"
-            >
-              {gameProfile?.avatar_url ? (
-                <img src={gameProfile.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
-                  <span className="text-white font-bold text-lg">
-                    {gameProfile?.username?.charAt(0).toUpperCase() || "?"}
-                  </span>
-                </div>
-              )}
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
-                {currentLevel}
-              </span>
-            </Link>
-          </div>
+          <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" aria-label="Fechar">
+            <X className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
       {/* Content */}
-      <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+      <main className="flex-1 pt-20 pb-24 px-4 max-w-[430px] mx-auto w-full">
         {/* Profile Header Card */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-6">
@@ -425,7 +397,7 @@ export default function PerfilPage() {
         {/* Stat Cards */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           {/* Pontos (Total XP) */}
-          <Link href="/ranking" className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 transition-all hover:border-zinc-700">
+          <button onClick={onClose} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 transition-all hover:border-zinc-700">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
                 <Trophy className="w-6 h-6 text-amber-500" aria-hidden="true" />
@@ -441,7 +413,7 @@ export default function PerfilPage() {
               <Target className="w-3 h-3" aria-hidden="true" />
               Ranking geral
             </p>
-          </Link>
+          </button>
 
           {/* Conquistas (Badges Earned) */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
@@ -463,7 +435,7 @@ export default function PerfilPage() {
           </div>
 
           {/* Ocorrências (Reports Sent) */}
-          <Link href="/" className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 transition-all hover:border-zinc-700">
+          <button onClick={onClose} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 transition-all hover:border-zinc-700">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
                 <Flag className="w-6 h-6 text-green-500" aria-hidden="true" />
@@ -479,7 +451,7 @@ export default function PerfilPage() {
               <MapPin className="w-3 h-3" aria-hidden="true" />
               Reportes enviados
             </p>
-          </Link>
+          </button>
         </div>
 
         {/* Category Progress Section */}
@@ -566,7 +538,7 @@ export default function PerfilPage() {
 
       {/* Badge Detail Modal */}
       {showBadgeDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl max-w-md w-full p-6 animate-pop-in relative">
             <button
               onClick={() => setShowBadgeDetail(null)}
@@ -605,9 +577,6 @@ export default function PerfilPage() {
           </div>
         </div>
       )}
-
-      {/* Bottom Navigation */}
-      <BottomNavigation />
     </div>
   );
 }

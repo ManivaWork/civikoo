@@ -180,7 +180,7 @@ export function ReportBottomSheet({
 
   if (showAuthError) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleCancel}>
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleCancel}>
         <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 max-w-sm mx-4 shadow-xl animate-slide-up">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -203,7 +203,7 @@ export function ReportBottomSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end animate-slide-up">
+    <div className="absolute inset-0 z-50 flex items-end animate-slide-up">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
@@ -288,7 +288,7 @@ export function ReportBottomSheet({
 
       {/* Nearby Reports Modal */}
       {showNearbyModal && nearbyReports.length > 0 && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 animate-fade-in" onClick={() => setShowNearbyModal(false)}>
+        <div className="absolute inset-0 z-60 flex items-center justify-center p-4 bg-black/50 animate-fade-in" onClick={() => setShowNearbyModal(false)}>
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-md p-6 animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Reporte similar encontrado</h3>

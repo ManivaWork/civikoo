@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Trophy, User as UserIcon, ChevronRight, ChevronLeft, Crown, Medal, TrendingUp, Target, Map } from "lucide-react";
+import { Trophy, Target, Crown, Medal, TrendingUp, Map, X, ChevronRight, ChevronLeft, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useSession } from "@/lib/auth";
 import type { LeaderboardEntry } from "@/app/components/map/types";
 import { MiniAvatar } from "@/app/components/avatar";
-import { BottomNavigation } from "@/app/components/ui/BottomNavigation";
 
 type LeaderboardType = "weekly" | "overall";
 
@@ -23,7 +22,11 @@ function getLevelTitle(level: number): string {
   return found?.title || "Protetor da Cidade";
 }
 
-export default function RankingPage() {
+interface RankingPanelProps {
+  onClose: () => void;
+}
+
+export function RankingPanel({ onClose }: RankingPanelProps) {
   const { user, profile, loading: authLoading } = useSession();
   const [activeTab, setActiveTab] = useState<LeaderboardType>("weekly");
   const [weeklyData, setWeeklyData] = useState<LeaderboardEntry[]>([]);
@@ -33,14 +36,17 @@ export default function RankingPage() {
     overall: null,
   });
   const [isLoading, setIsLoading] = useState(true);
-
   const [gameProfile, setGameProfile] = useState<{ level: number; total_score: number; title?: string } | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading) setIsReady(true);
+  }, [authLoading]);
 
   const fetchLeaderboards = useCallback(async () => {
     const supabase = createClient();
 
     try {
-      // Fetch user's profile for rank card
       if (user) {
         const { data: profileData } = await supabase
           .from("profiles")
@@ -52,7 +58,6 @@ export default function RankingPage() {
         }
       }
 
-      // Fetch weekly leaderboard
       const { data: weekly, error: weeklyError } = await supabase
         .from("weekly_leaderboard")
         .select("*, profiles!inner(equipped)")
@@ -67,7 +72,6 @@ export default function RankingPage() {
         })));
       }
 
-      // Fetch overall leaderboard
       const { data: overall, error: overallError } = await supabase
         .from("leaderboard_overall")
         .select("*, profiles!inner(equipped)")
@@ -80,7 +84,6 @@ export default function RankingPage() {
         })));
       }
 
-      // Find user's rank if logged in
       if (user) {
         const weeklyUser = weekly?.find((e: any) => e.id === user.id);
         const overallUser = overall?.find((e: any) => e.id === user.id);
@@ -98,33 +101,35 @@ export default function RankingPage() {
   }, [user]);
 
   useEffect(() => {
-    fetchLeaderboards();
-  }, [fetchLeaderboards]);
+    if (isReady) fetchLeaderboards();
+  }, [fetchLeaderboards, isReady]);
 
   const currentData = activeTab === "weekly" ? weeklyData : overallData;
   const currentUserRank = userRank[activeTab];
 
-  // Get top 3 for podium
   const top3 = currentData.slice(0, 3);
   const rest = currentData.slice(3);
 
-  if (authLoading || isLoading) {
+  if (authLoading || !isReady || isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <div className="fixed inset-0 z-50 bg-zinc-950 animate-slide-up flex flex-col">
         <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
-          <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
+          <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-                <Map className="w-5 h-5 text-white" aria-hidden="true" />
+                <Trophy className="w-5 h-5 text-white" aria-hidden="true" />
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold text-white">Civikoo</h1>
                 <p className="text-xs text-zinc-500">Ranking</p>
               </div>
-            </Link>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </header>
-        <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+        <main className="flex-1 pt-20 pb-24 px-4 max-w-[430px] mx-auto w-full">
           <div className="max-w-3xl mx-auto space-y-6">
             <div className="animate-pulse space-y-6">
               <div className="h-24 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center">
@@ -144,72 +149,32 @@ export default function RankingPage() {
             </div>
           </div>
         </main>
-        <BottomNavigation />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-zinc-950 animate-slide-up flex flex-col">
       {/* Top Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
-        <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
+        <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-              <Map className="w-5 h-5 text-white" aria-hidden="true" />
+              <Trophy className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-lg font-bold text-white">Civikoo</h1>
               <p className="text-xs text-zinc-500">Ranking</p>
             </div>
-          </Link>
-
-          {/* Right: Level/XP/Coins + Avatar */}
-          {user && profile && (
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-4 pr-2">
-                <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
-                  <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/20">
-                    <span className="text-xs font-bold text-amber-400">{profile.level}</span>
-                  </div>
-                </div>
-                <div className="relative w-32 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (profile.total_score % (profile.level * profile.level * 50)) / (profile.level * profile.level * 50) * 100)}%` }}
-                  />
-                </div>
-                <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
-                  <span className="text-amber-400 text-sm font-bold">{profile.coins ?? 0}</span>
-                  <span className="text-zinc-500 text-xs">moedas</span>
-                </div>
-              </div>
-
-              <Link
-                href="/perfil"
-                className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
-                aria-label="Meu perfil"
-              >
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
-                    <span className="text-white font-bold text-lg">
-                      {profile.username?.charAt(0).toUpperCase() || "?"}
-                    </span>
-                  </div>
-                )}
-                <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
-                  {profile.level}
-                </span>
-              </Link>
-            </div>
-          )}
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" aria-label="Fechar">
+            <X className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
       {/* Content */}
-      <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+      <main className="flex-1 pt-20 pb-24 px-4 max-w-[430px] mx-auto w-full">
         <div className="max-w-3xl mx-auto space-y-6">
 
           {/* Header */}
@@ -418,8 +383,6 @@ export default function RankingPage() {
 
         </div>
       </main>
-
-      <BottomNavigation />
     </div>
   );
 }

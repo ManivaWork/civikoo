@@ -445,6 +445,11 @@ input[type="number"] {
   outline-offset: 2px;
 }
 
+/* Utility: creates containing block for fixed→absolute positioning on desktop */
+.transform-gpu {
+  transform: translateZ(0);
+}
+
 /* Map attribution */
 .leaflet-control-attribution {
   font-size: 11px !important;

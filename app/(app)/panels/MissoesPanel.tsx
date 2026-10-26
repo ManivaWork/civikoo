@@ -2,16 +2,19 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Map, Flame, Calendar, CalendarDays, Trophy, Coins } from 'lucide-react';
+import { Map, Flame, Calendar, CalendarDays, Trophy, Coins, X } from 'lucide-react';
 import { useSession } from '@/lib/auth';
 import { UserMissionWithTemplate } from '@/app/components/map/types';
 import { MissionCard } from '@/app/components/ui/MissionCard';
 import { StreakIndicator, type StreakInfo } from '@/app/components/ui/StreakIndicator';
 import { getMyMissions, getStreakInfo } from '@/lib/supabase/client';
 import { useToast } from '@/app/components/ui/Toast';
-import { BottomNavigation } from '@/app/components/ui/BottomNavigation';
 
-export default function MissoesPage() {
+interface MissoesPanelProps {
+  onClose: () => void;
+}
+
+export function MissoesPanel({ onClose }: MissoesPanelProps) {
   const { user, profile } = useSession();
   const { show } = useToast();
   const [missions, setMissions] = useState<UserMissionWithTemplate[]>([]);
@@ -19,6 +22,11 @@ export default function MissoesPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'diaria' | 'semanal'>('diaria');
   const [hasUnclaimedReward, setHasUnclaimedReward] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -42,8 +50,8 @@ export default function MissoesPage() {
   }, [user, show]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (isReady) loadData();
+  }, [loadData, isReady]);
 
   const handleMissionClaimed = useCallback(() => {
     loadData();
@@ -56,11 +64,62 @@ export default function MissoesPage() {
   const completedCount = activeMissions.filter(m => m.is_completed && !m.is_claimed).length;
   const totalCount = activeMissions.length;
 
+  if (!user || !profile) {
+    return (
+      <div className="fixed inset-0 z-50 bg-zinc-950 animate-slide-up flex flex-col">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
+          <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                <Map className="w-5 h-5 text-white" aria-hidden="true" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold text-white">Civikoo</h1>
+                <p className="text-xs text-zinc-500">Missões</p>
+              </div>
+            </Link>
+            <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+        <main className="flex-1 pt-20 pb-24 px-4 max-w-[430px] mx-auto w-full">
+          <div className="text-center py-16">
+            <div className="relative inline-flex items-center justify-center mb-6">
+              <div className="absolute inset-0 bg-amber-500/10 rounded-full blur-xl animate-pulse" />
+              <div className="relative w-24 h-24 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                <Trophy className="w-10 h-10 text-zinc-600" aria-hidden="true" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-3">Faça login para ver Missões</h2>
+            <p className="text-zinc-400 mb-8 max-w-md mx-auto">
+              Entre para completar missões diárias e semanais, ganhar XP e moedas.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs mx-auto">
+              <Link
+                href="/login"
+                className="flex-1 px-6 py-3 text-center text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                Entrar
+              </Link>
+              <Link
+                href="/cadastro"
+                className="flex-1 px-6 py-3 text-center text-sm font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors border border-amber-200 flex items-center justify-center gap-2"
+              >
+                Cadastrar
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-zinc-950 animate-slide-up flex flex-col">
       {/* Top Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
-        <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-[430px] mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
               <Map className="w-5 h-5 text-white" aria-hidden="true" />
@@ -70,44 +129,13 @@ export default function MissoesPage() {
               <p className="text-xs text-zinc-500">Missões</p>
             </div>
           </Link>
-
-          <div className="flex items-center gap-3">
-            {/* Streak indicator */}
-            {streak && streak.streak_count > 0 && (
-              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                <Flame className="w-4 h-4 text-amber-500" aria-hidden="true" />
-                <span className="text-sm font-bold text-amber-400">{streak.streak_count}</span>
-                <span className="text-xs text-zinc-500">dias</span>
-              </div>
-            )}
-
-            {/* Avatar */}
-            <Link
-              href="/perfil"
-              className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
-              aria-label="Meu perfil"
-            >
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
-                  <span className="text-white font-bold text-lg">
-                    {profile?.username?.charAt(0).toUpperCase() || "?"}
-                  </span>
-                </div>
-              )}
-              {hasUnclaimedReward && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">!</span>
-              )}
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
-                {profile?.level ?? 1}
-              </span>
-            </Link>
-          </div>
+          <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors" aria-label="Fechar">
+            <X className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+      <main className="flex-1 pt-20 pb-24 px-4 max-w-[430px] mx-auto w-full">
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
@@ -224,8 +252,6 @@ export default function MissoesPage() {
           </div>
         )}
       </main>
-
-      <BottomNavigation />
     </div>
   );
 }
