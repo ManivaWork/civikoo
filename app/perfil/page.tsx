@@ -142,15 +142,17 @@ export default function PerfilPage() {
         setUserBadges(codes);
       }
 
-      // Fetch pending XP from reward_events
-      const { data: pendingEvents, error: pendingError } = await supabase
-        .from("reward_events")
-        .select("xp")
+      // Fetch pending XP from reports that don't have enough confirmations yet
+      // Pending = reports where confirmations_continua < 2 (need 2 confirmations to be resolved)
+      const { data: pendingReports, error: pendingError } = await supabase
+        .from("reports")
+        .select("id, category")
         .eq("user_id", user.id)
-        .eq("state", "pendente");
+        .lt("confirmations_continua", 2);
 
-      if (!pendingError && pendingEvents) {
-        const totalPending = pendingEvents.reduce((sum: number, e: { xp: number | null }) => sum + (e.xp || 0), 0);
+      if (!pendingError && pendingReports) {
+        // Base XP per report is 10, so pending XP = count * 10
+        const totalPending = pendingReports.length * 10;
         setPendingXP(totalPending);
       }
 

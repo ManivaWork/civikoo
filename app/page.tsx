@@ -150,6 +150,13 @@ const mockUser: UserProfile = {
   equipped: {},
 };
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(id: string): boolean {
+  return UUID_REGEX.test(id);
+}
+
 const DEFAULT_FILTERS = {
   categories: [] as ReportCategory[],
   statuses: ["ativo", "em_analise"] as ReportStatus[],
@@ -361,6 +368,10 @@ function HomeContent() {
   // Fetch user's confirmations for each report (to disable buttons)
   const fetchUserConfirmations = useCallback(async (reportIds: string[]) => {
     if (!user || reportIds.length === 0) return;
+
+    // Filter out non-UUID IDs (mock data)
+    const validReportIds = reportIds.filter(isValidUuid);
+    if (validReportIds.length === 0) return;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

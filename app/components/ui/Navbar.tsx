@@ -115,13 +115,14 @@ export function Navbar() {
     return "?";
   };
 
-  const getDisplayName = (user: UserProfile, gameProfile: GameProfile | null) => {
-    if (gameProfile?.username) return gameProfile.username;
-    if (user.user_metadata?.full_name) return user.user_metadata.full_name;
-    if (user.user_metadata?.username) return user.user_metadata.username;
-    if (user.email) return user.email.split("@")[0];
-    return "Usuário";
-  };
+  const getDisplayName = (user: UserProfile | null, gameProfile: GameProfile | null) => {
+  if (gameProfile?.username) return gameProfile.username;
+  if (!user) return "Usuário";
+  if (user.user_metadata?.full_name) return user.user_metadata.full_name;
+  if (user.user_metadata?.username) return user.user_metadata.username;
+  if (user.email) return user.email.split("@")[0];
+  return "Usuário";
+};
 
   if (isLoading) {
     return (
@@ -140,7 +141,7 @@ export function Navbar() {
     );
   }
 
-  const displayName = getDisplayName(user!, gameProfile);
+  const displayName = getDisplayName(user, gameProfile);
   const initials = getInitials(gameProfile?.full_name || gameProfile?.username, user?.email);
   const level = gameProfile?.level || 1;
   const xp = gameProfile?.total_score || 0;
@@ -304,7 +305,7 @@ export function Navbar() {
                   <MiniAvatar equipped={gameProfile?.equipped ?? null} size={40} />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-zinc-900 dark:text-white truncate">{displayName}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{user.email}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{user?.email}</p>
                   </div>
                 </div>
 

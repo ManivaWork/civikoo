@@ -2,7 +2,12 @@ export type ReportCategory =
   | "buraco_asfalto"
   | "vazamento_agua"
   | "sinalizacao"
-  | "acessibilidade";
+  | "acessibilidade"
+  | "iluminacao"
+  | "lixo_entulho"
+  | "vegetacao"
+  | "mobiliario_urbano"
+  | "outro";
 
 export type ReportStatus = "ativo" | "em_analise" | "em_andamento" | "resolvido" | "recusado";
 
@@ -123,6 +128,36 @@ export const CATEGORY_CONFIG: Record<ReportCategory, { label: string; icon: stri
     color: "text-purple-600",
     bgColor: "bg-purple-100 dark:bg-purple-900/30",
   },
+  iluminacao: {
+    label: "Iluminação",
+    icon: "💡",
+    color: "text-amber-600",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
+  },
+  lixo_entulho: {
+    label: "Lixo e Entulho",
+    icon: "🗑️",
+    color: "text-green-600",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
+  },
+  vegetacao: {
+    label: "Vegetação",
+    icon: "🌳",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
+  },
+  mobiliario_urbano: {
+    label: "Mobiliário Urbano",
+    icon: "🪑",
+    color: "text-zinc-600",
+    bgColor: "bg-zinc-100 dark:bg-zinc-900/30",
+  },
+  outro: {
+    label: "Outro",
+    icon: "📦",
+    color: "text-gray-600",
+    bgColor: "bg-gray-100 dark:bg-gray-900/30",
+  },
 };
 
 export const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bgColor: string }> = {
@@ -134,7 +169,7 @@ export const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string;
 };
 
 export function getCategoryConfig(category: ReportCategory) {
-  return CATEGORY_CONFIG[category] || CATEGORY_CONFIG.acessibilidade;
+  return CATEGORY_CONFIG[category] || CATEGORY_CONFIG.outro;
 }
 
 export function getStatusConfig(status: ReportStatus) {
@@ -151,6 +186,11 @@ export const CATEGORY_DISPLAY_POINTS: Record<ReportCategory, number> = {
   vazamento_agua: 15,
   sinalizacao: 8,
   acessibilidade: 12,
+  iluminacao: 10,
+  lixo_entulho: 8,
+  vegetacao: 8,
+  mobiliario_urbano: 8,
+  outro: 5,
 };
 
 // ========================

@@ -193,8 +193,13 @@ export function NewReportModal({ isOpen, onClose, userLocation, onReportCreated 
 
   const categories: ReportCategory[] = [
     "buraco_asfalto",
-    "lixo_entulho",
+    "vazamento_agua",
+    "sinalizacao",
+    "acessibilidade",
     "iluminacao",
+    "lixo_entulho",
+    "vegetacao",
+    "mobiliario_urbano",
     "outro",
   ];
 

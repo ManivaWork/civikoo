@@ -52,7 +52,7 @@ export default function RankingPage() {
 
       // Fetch weekly leaderboard
       const { data: weekly, error: weeklyError } = await supabase
-        .from("leaderboard_weekly")
+        .from("weekly_leaderboard")
         .select("*, profiles!inner(equipped)")
         .order("weekly_xp", { ascending: false });
 

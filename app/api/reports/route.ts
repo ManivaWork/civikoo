@@ -27,11 +27,14 @@ export async function POST(request: NextRequest) {
     // Validate category
     const validCategories = [
       "buraco_asfalto",
-      "iluminacao",
-      "lixo_entulho",
       "vazamento_agua",
       "sinalizacao",
       "acessibilidade",
+      "iluminacao",
+      "lixo_entulho",
+      "vegetacao",
+      "mobiliario_urbano",
+      "outro",
     ];
     if (!validCategories.includes(category)) {
       return NextResponse.json(

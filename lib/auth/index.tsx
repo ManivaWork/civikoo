@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode, ReactElement } from "react";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 interface GameProfile {
@@ -25,6 +25,7 @@ interface GameProfile {
 
 interface SessionContextType {
   user: User | null;
+  session: Session | null;
   profile: GameProfile | null;
   loading: boolean;
   refresh: () => Promise<void>;
@@ -34,6 +35,7 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export function SessionProvider({ children }: { children: ReactNode }): ReactElement {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<GameProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +59,9 @@ export function SessionProvider({ children }: { children: ReactNode }): ReactEle
   const refresh = async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
     setUser(user);
+    setSession(session);
     if (user) {
       await fetchProfile(user.id);
     } else {
@@ -70,8 +74,9 @@ export function SessionProvider({ children }: { children: ReactNode }): ReactEle
     refresh();
 
     const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: import("@supabase/supabase-js").Session | null) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
       setUser(session?.user ?? null);
+      setSession(session);
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
@@ -84,7 +89,7 @@ export function SessionProvider({ children }: { children: ReactNode }): ReactEle
   }, []);
 
   return (
-    <SessionContext.Provider value={{ user, profile, loading, refresh }}>
+    <SessionContext.Provider value={{ user, session, profile, loading, refresh }}>
       {children}
     </SessionContext.Provider>
   );

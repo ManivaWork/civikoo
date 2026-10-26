@@ -29,6 +29,11 @@ const VALID_CATEGORIES = [
   'vazamento_agua',
   'sinalizacao',
   'acessibilidade',
+  'iluminacao',
+  'lixo_entulho',
+  'vegetacao',
+  'mobiliario_urbano',
+  'outro',
 ];
 
 const POINTS_PER_REPORT = 10;

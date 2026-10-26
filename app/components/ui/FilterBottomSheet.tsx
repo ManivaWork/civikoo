@@ -29,8 +29,9 @@ const ALL_CATEGORIES: ReportCategory[] = [
 ];
 
 const STATUS_OPTIONS: { value: ReportStatus; label: string; icon: string }[] = [
-  { value: "aberto", label: "Aberto", icon: "🔴" },
-  { value: "confirmado", label: "Confirmado", icon: "🟠" },
+  { value: "ativo", label: "Ativo", icon: "🔵" },
+  { value: "em_analise", label: "Em Análise", icon: "🟠" },
+  { value: "em_andamento", label: "Em Andamento", icon: "🟣" },
   { value: "resolvido", label: "Resolvido", icon: "🟢" },
   { value: "recusado", label: "Recusado", icon: "⚫" },
 ];
@@ -112,7 +113,7 @@ export function FilterBottomSheet({
   const clearAllFilters = () => {
     const defaults: FilterState = {
       categories: [],
-      statuses: ["aberto", "confirmado"],
+      statuses: ["ativo", "em_analise"],
       onlyMine: false,
       period: "30d",
       nearMe: null,
@@ -205,7 +206,7 @@ export function FilterBottomSheet({
           <FilterSection title="Categorias" icon={<CheckCircle className="w-5 h-5" />}>
             <div className="grid grid-cols-3 gap-2">
               {ALL_CATEGORIES.map((cat) => {
-                const config = CATEGORY_CONFIG[cat];
+                const config = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.outro;
                 const isSelected = localFilters.categories.includes(cat);
                 return (
                   <button

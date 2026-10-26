@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Loader2, CheckCircle, AlertCircle, MapPin, Image, Tag, FileText } from "lucide-react";
 import { uploadReportImage } from "@/lib/supabase/client";
-import { createClient } from "@/lib/supabase/client";
+import { useSession } from "@/lib/auth";
 import { useToast } from "./Toast";
 
 interface ReportData {
@@ -17,16 +17,16 @@ interface ReportData {
 
 interface ReportStepSubmitProps {
   reportData: ReportData;
-  userId: string;
   onSubmit: () => void;
   onCancel: () => void;
   onBack: () => void;
 }
 
-export function ReportStepSubmit({ reportData, userId, onSubmit, onCancel, onBack }: ReportStepSubmitProps) {
+export function ReportStepSubmit({ reportData, onSubmit, onCancel, onBack }: ReportStepSubmitProps) {
   const [step, setStep] = useState<"uploading" | "saving" | "success" | "error">("uploading");
   const [error, setError] = useState<string | null>(null);
   const { show } = useToast();
+  const { session } = useSession();
 
   const steps = [
     { id: "uploading", label: "Enviando foto", icon: Image },
@@ -38,22 +38,36 @@ export function ReportStepSubmit({ reportData, userId, onSubmit, onCancel, onBac
     try {
       // Step 1: Upload image
       setStep("uploading");
-      const imageUrl = await uploadReportImage(reportData.file, userId);
+      const imageUrl = await uploadReportImage(reportData.file, session?.user?.id || "");
 
-      // Step 2: Save report
+      // Step 2: Save report via API route (which calls Edge Function with security checks)
       setStep("saving");
-      const supabase = createClient();
 
-      const { error: insertError } = await supabase
-        .from("reports")
-        .insert({
-          location: `POINT(${reportData.position.lng} ${reportData.position.lat})`,
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token || ""}`,
+        },
+        body: JSON.stringify({
+          latitude: reportData.position.lat,
+          longitude: reportData.position.lng,
           category: reportData.category,
+          title: `Problema: ${reportData.category}`,
           description: reportData.description || null,
           image_url: imageUrl,
-        });
+          user_location: {
+            latitude: reportData.position.lat,
+            longitude: reportData.position.lng,
+          },
+        }),
+      });
 
-      if (insertError) throw insertError;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao criar reporte");
+      }
 
       setStep("success");
       show("Reporte enviado com sucesso! 🎉", "success");
@@ -70,12 +84,11 @@ export function ReportStepSubmit({ reportData, userId, onSubmit, onCancel, onBac
   };
 
   // Auto-start on mount
-  // Using a ref to track if we've already started
-  const startedRef = useRef(false);
-  if (!startedRef.current) {
-    startedRef.current = true;
-    runSubmit();
-  }
+  useEffect(() => {
+    if (session?.user) {
+      runSubmit();
+    }
+  }, [session]);
 
   const CurrentIcon = steps.find(s => s.id === step)?.icon || Loader2;
 

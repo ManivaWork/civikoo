@@ -260,7 +260,6 @@ export function ReportBottomSheet({
             <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <ReportStepSubmit
                 reportData={reportData as any}
-                userId={user.id}
                 onSubmit={handleSubmitComplete}
                 onCancel={handleCancel}
                 onBack={goBack}

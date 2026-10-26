@@ -42,7 +42,7 @@ interface MapViewProps {
   userLocation: { lat: number; lng: number } | null;
   userAccuracy: number | null;
   onReportSelect?: (report: Report | null) => void;
-  onVerify: (reportId: string, type: "confirmacao" | "negacao" | "continua" | "resolvido") => void;
+  onVerify: (reportId: string, type: "continua" | "resolvido") => void;
   onNavigate: (report: Report) => void;
   onLocateUser: () => void;
   onRefresh: () => void;
@@ -190,7 +190,7 @@ function Legend() {
       <p className="text-xs font-semibold text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">Legenda</p>
       <div className="flex flex-col gap-2">
         {categories.map((cat) => {
-          const config = CATEGORY_CONFIG[cat];
+          const config = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.outro;
           return (
             <div key={cat} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor}`}>
