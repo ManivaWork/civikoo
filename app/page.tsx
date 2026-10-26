@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { MapPin, LogIn, UserPlus, Filter } from "lucide-react";
-import { TopUserPanel } from "./components/ui/TopUserPanel";
+import { MapPin, LogIn, UserPlus, Filter, Settings, Map } from "lucide-react";
+import { BottomNavigation } from "./components/ui/BottomNavigation";
 import { ToastContainer } from "./components/ui/Toast";
 import { FirstReportWarning } from "./components/ui/FirstReportWarning";
 import { ReportBottomSheet } from "./components/ui/ReportBottomSheet";
@@ -165,8 +165,124 @@ const DEFAULT_FILTERS = {
   nearMe: null as { enabled: boolean; radius: number } | null,
 };
 
+// Category display names mapping
+const CATEGORY_LABELS: Record<ReportCategory, string> = {
+  buraco_asfalto: "Buraco no asfalto",
+  lixo_entulho: "Lixo e entulho",
+  iluminacao: "Iluminação",
+  sinalizacao: "Sinalização",
+  acessibilidade: "Acessibilidade",
+  vazamento_agua: "Vazamento de água",
+  vegetacao: "Vegetação",
+  mobiliario_urbano: "Mobiliário urbano",
+  outro: "Outro",
+};
+
+function getXpForNextLevel(level: number): number {
+  return level * level * 100;
+}
+
+// Convert GameProfile (from auth) to UserProfile (for MapView)
+function toUserProfile(profile: any): UserProfile | null {
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    username: profile.username,
+    full_name: profile.full_name,
+    avatar_url: profile.avatar_url,
+    level: profile.level,
+    xp: profile.xp ?? profile.total_score,
+    coins: profile.coins,
+    total_score: profile.total_score,
+    streak_count: profile.current_streak ?? profile.streak_count ?? 0,
+    best_streak: profile.longest_streak ?? profile.best_streak ?? 0,
+    last_active_date: profile.last_active_date ?? null,
+    title: profile.title,
+    equipped: profile.equipped,
+    created_at: profile.created_at,
+  };
+}
+
+function TopBar({ profile, userLocation }: { profile: UserProfile | null; userLocation: { lat: number; lng: number } | null }) {
+  if (!profile) return null;
+
+  const xpForNextLevel = getXpForNextLevel(profile.level);
+  const xpProgress = (profile.total_score % xpForNextLevel) / xpForNextLevel;
+
+  return (
+    <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
+      <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
+        {/* Left: Logo + Location */}
+        <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+            <Map className="w-5 h-5 text-white" aria-hidden="true" />
+          </div>
+          <div className="hidden sm:block">
+            <h1 className="text-lg font-bold text-white">Civikoo</h1>
+            <p className="text-xs text-zinc-500 truncate max-w-[160px]">
+              {userLocation
+                ? `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`
+                : "Carregando localização..."}
+            </p>
+          </div>
+        </Link>
+
+        {/* Right: Level/XP/Coins + Avatar */}
+        <div className="flex items-center gap-3">
+          {/* XP Bar + Level + Coins */}
+          <div className="hidden md:flex items-center gap-4 pr-2">
+            {/* Level */}
+            <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+              <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/20">
+                <span className="text-xs font-bold text-amber-400">{profile.level}</span>
+              </div>
+            </div>
+            {/* XP Progress */}
+            <div className="relative w-32 h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
+                style={{ width: `${xpProgress * 100}%` }}
+              />
+            </div>
+            {/* Coins */}
+            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+              <span className="text-amber-400 text-sm font-bold">{profile.coins}</span>
+              <span className="text-zinc-500 text-xs">moedas</span>
+            </div>
+          </div>
+
+          {/* Avatar Button */}
+          <Link
+            href="/perfil"
+            className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
+            aria-label="Meu perfil"
+          >
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
+                <span className="text-white font-bold text-lg">
+                  {profile.username?.charAt(0).toUpperCase() || "?"}
+                </span>
+              </div>
+            )}
+            {/* Level badge on avatar */}
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
+              {profile.level}
+            </span>
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function HomeContent() {
-  const { user, loading: authLoading } = useSession();
+  const { user, profile, loading: authLoading } = useSession();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [userAccuracy, setUserAccuracy] = useState<number | null>(null);
   const [reports, setReports] = useState<Report[]>(mockReports);
@@ -383,7 +499,7 @@ function HomeContent() {
       const { data, error } = await supabase
         .from("report_confirmations")
         .select("report_id, type")
-        .in("report_id", reportIds)
+        .in("report_id", validReportIds)
         .eq("user_id", user.id);
 
       if (error) {
@@ -567,7 +683,7 @@ function HomeContent() {
       }>
         <MapView
           reports={filteredReports}
-          userProfile={mockUser}
+          userProfile={toUserProfile(profile) || mockUser}
           userLocation={userLocation}
           userAccuracy={userAccuracy}
           onVerify={handleVerify}
@@ -581,20 +697,16 @@ function HomeContent() {
         />
       </Suspense>
 
-      {/* Top User Panel - only for logged in users */}
-      {isLoggedIn && (
-        <TopUserPanel
-          level={mockUser.level}
-          totalScore={mockUser.total_score}
-          currentStreak={mockUser.streak_count}
-        />
+      {/* Top Bar - only for logged in users */}
+      {isLoggedIn && profile && (
+        <TopBar profile={toUserProfile(profile)} userLocation={userLocation} />
       )}
 
       {/* Filter Button */}
       {isLoggedIn && (
         <button
           onClick={handleOpenFilterSheet}
-          className={`fixed top-4 right-4 z-20 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-lg ${
+          className={`fixed top-20 right-4 z-20 px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-lg ${
             hasActiveFilters
               ? "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
               : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
@@ -616,7 +728,7 @@ function HomeContent() {
         null
       ) : (
         // Prompt for visitors
-        <div className="fixed bottom-6 right-6 left-6 md:left-auto md:right-6 md:w-96 z-30">
+        <div className="fixed bottom-24 right-6 left-6 md:left-auto md:right-6 md:w-96 z-30">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-5">
             <div className="flex items-start gap-3">
               <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -681,6 +793,9 @@ function HomeContent() {
           <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
+
+      {/* Bottom Navigation */}
+      <BottomNavigation />
     </div>
   );
 }

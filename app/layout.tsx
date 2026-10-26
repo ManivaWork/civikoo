@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "./components/ui";
 import { SessionProvider } from "@/lib/auth";
 import { InstallBanner } from "./components/ui/InstallBanner";
 
@@ -51,7 +50,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="pt-BR"
@@ -68,7 +67,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <SessionProvider>
-          <Navbar />
           {children}
           <InstallBanner />
         </SessionProvider>

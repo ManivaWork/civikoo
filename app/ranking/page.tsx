@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Trophy, User as UserIcon, ChevronRight, ChevronLeft, Crown, Medal, TrendingUp, Target } from "lucide-react";
+import { Trophy, User as UserIcon, ChevronRight, ChevronLeft, Crown, Medal, TrendingUp, Target, Map } from "lucide-react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useSession } from "@/lib/auth";
 import type { LeaderboardEntry } from "@/app/components/map/types";
 import { MiniAvatar } from "@/app/components/avatar";
+import { BottomNavigation } from "@/app/components/ui/BottomNavigation";
 
 type LeaderboardType = "weekly" | "overall";
 
@@ -22,7 +24,7 @@ function getLevelTitle(level: number): string {
 }
 
 export default function RankingPage() {
-  const { user, loading: authLoading } = useSession();
+  const { user, profile, loading: authLoading } = useSession();
   const [activeTab, setActiveTab] = useState<LeaderboardType>("weekly");
   const [weeklyData, setWeeklyData] = useState<LeaderboardEntry[]>([]);
   const [overallData, setOverallData] = useState<LeaderboardEntry[]>([]);
@@ -40,13 +42,13 @@ export default function RankingPage() {
     try {
       // Fetch user's profile for rank card
       if (user) {
-        const { data: profile } = await supabase
+        const { data: profileData } = await supabase
           .from("profiles")
           .select("level, total_score")
           .eq("id", user.id)
           .single();
-        if (profile) {
-          setGameProfile({ level: profile.level, total_score: profile.total_score, title: getLevelTitle(profile.level) });
+        if (profileData) {
+          setGameProfile({ level: profileData.level, total_score: profileData.total_score, title: getLevelTitle(profileData.level) });
         }
       }
 
@@ -108,240 +110,316 @@ export default function RankingPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pt-16 pb-20 px-4">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="animate-pulse space-y-6">
-            <div className="h-24 bg-zinc-200 dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
-              <div className="w-3/4 h-8 bg-zinc-300 dark:bg-zinc-700 rounded" />
-            </div>
-            <div className="h-12 bg-zinc-200 dark:bg-zinc-800 rounded-xl" />
-            <div className="grid grid-cols-3 gap-4">
-              {[1,2,3].map(i => (
-                <div key={i} className="h-32 bg-zinc-200 dark:bg-zinc-800 rounded-2xl" />
-              ))}
-            </div>
-            <div className="space-y-3">
-              {[1,2,3,4,5].map(i => (
-                <div key={i} className="h-16 bg-zinc-200 dark:bg-zinc-800 rounded-xl" />
-              ))}
+      <div className="min-h-screen bg-zinc-950 flex flex-col">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
+          <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                <Map className="w-5 h-5 text-white" aria-hidden="true" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold text-white">Civikoo</h1>
+                <p className="text-xs text-zinc-500">Ranking</p>
+              </div>
+            </Link>
+          </div>
+        </header>
+        <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="animate-pulse space-y-6">
+              <div className="h-24 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center">
+                <div className="w-3/4 h-8 bg-zinc-800 rounded" />
+              </div>
+              <div className="h-12 bg-zinc-900 border border-zinc-800 rounded-xl" />
+              <div className="grid grid-cols-3 gap-4">
+                {[1,2,3].map(i => (
+                  <div key={i} className="h-32 bg-zinc-900 border border-zinc-800 rounded-2xl" />
+                ))}
+              </div>
+              <div className="space-y-3">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="h-16 bg-zinc-900 border border-zinc-800 rounded-xl" />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </main>
+        <BottomNavigation />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pt-16 pb-20 px-4">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
+      {/* Top Bar */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
+        <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+              <Map className="w-5 h-5 text-white" aria-hidden="true" />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-lg font-bold text-white">Civikoo</h1>
+              <p className="text-xs text-zinc-500">Ranking</p>
+            </div>
+          </Link>
 
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white flex items-center justify-center gap-2">
-            <Trophy className="w-8 h-8 text-amber-500" aria-hidden="true" />
-            Ranking
-          </h1>
-          <p className="text-zinc-600 dark:text-zinc-400 mt-1">
-            {activeTab === "weekly" ? "Top 20 da semana (XP ganho nos últimos 7 dias)" : "Ranking geral por XP total"}
-          </p>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-1 flex gap-1">
-          <button
-            onClick={() => setActiveTab("weekly")}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === "weekly"
-                ? "bg-amber-500 text-white shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            }`}
-          >
-            <TrendingUp className="w-4 h-4 inline mr-1" aria-hidden="true" />
-            Semanal
-          </button>
-          <button
-            onClick={() => setActiveTab("overall")}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === "overall"
-                ? "bg-amber-500 text-white shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            }`}
-          >
-            <Target className="w-4 h-4 inline mr-1" aria-hidden="true" />
-            Geral
-          </button>
-        </div>
-
-        {/* User Rank Card (if logged in) */}
-        {user && currentUserRank && (
-          <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                  #{currentUserRank}
+          {/* Right: Level/XP/Coins + Avatar */}
+          {user && profile && (
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-4 pr-2">
+                <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+                  <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/20">
+                    <span className="text-xs font-bold text-amber-400">{profile.level}</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-amber-100 text-sm">Sua posição no ranking {activeTab === "weekly" ? "semanal" : "geral"}</p>
-                  <p className="text-2xl font-bold">#{currentUserRank}</p>
+                <div className="relative w-32 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (profile.total_score % (profile.level * profile.level * 50)) / (profile.level * profile.level * 50) * 100)}%` }}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+                  <span className="text-amber-400 text-sm font-bold">{profile.coins ?? 0}</span>
+                  <span className="text-zinc-500 text-xs">moedas</span>
                 </div>
               </div>
-              {gameProfile && (
+
+              <Link
+                href="/perfil"
+                className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
+                aria-label="Meu perfil"
+              >
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
+                    <span className="text-white font-bold text-lg">
+                      {profile.username?.charAt(0).toUpperCase() || "?"}
+                    </span>
+                  </div>
+                )}
+                <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
+                  {profile.level}
+                </span>
+              </Link>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+        <div className="max-w-3xl mx-auto space-y-6">
+
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-white flex items-center justify-center gap-2">
+              <Trophy className="w-8 h-8 text-amber-500" aria-hidden="true" />
+              Ranking
+            </h1>
+            <p className="text-zinc-400 mt-1">
+              {activeTab === "weekly" ? "Top 20 da semana (XP ganho nos últimos 7 dias)" : "Ranking geral por XP total"}
+            </p>
+          </div>
+
+          {/* Tabs */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-1 flex gap-1">
+            <button
+              onClick={() => setActiveTab("weekly")}
+              className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === "weekly"
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "text-zinc-400 hover:bg-zinc-800"
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 inline mr-1" aria-hidden="true" />
+              Semanal
+            </button>
+            <button
+              onClick={() => setActiveTab("overall")}
+              className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === "overall"
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "text-zinc-400 hover:bg-zinc-800"
+              }`}
+            >
+              <Target className="w-4 h-4 inline mr-1" aria-hidden="true" />
+              Geral
+            </button>
+          </div>
+
+          {/* User Rank Card (if logged in) */}
+          {user && currentUserRank && gameProfile && (
+            <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                    #{currentUserRank}
+                  </div>
+                  <div>
+                    <p className="text-amber-100 text-sm">Sua posição no ranking {activeTab === "weekly" ? "semanal" : "geral"}</p>
+                    <p className="text-2xl font-bold">#{currentUserRank}</p>
+                  </div>
+                </div>
                 <div className="text-right">
                   <p className="text-xs text-amber-100">Nível {gameProfile.level} · {getLevelTitle(gameProfile.level)}</p>
                   <p className="text-lg font-bold">{gameProfile.total_score.toLocaleString("pt-BR")} XP</p>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Podium (Top 3) */}
-        {top3.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
-            {/* 2nd Place */}
-            {top3[1] && (
-              <div className="relative col-span-1">
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 pt-8 text-center relative">
-                  <Medal className="w-10 h-10 text-gray-400 mx-auto mb-2" aria-hidden="true" />
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold text-xl shadow-lg">
-                    2
-                  </div>
-                  <MiniAvatar equipped={top3[1].equipped ?? null} size={56} className="mx-auto mb-2" />
-                  <p className="font-bold text-zinc-900 dark:text-white truncate">{top3[1].username}</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Nível {top3[1].level} · {getLevelTitle(top3[1].level)}
-                  </p>
-                  <p className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-1">
-                    {activeTab === "weekly" ? top3[1].xp : top3[1].xp.toLocaleString("pt-BR")} XP
-                  </p>
-                  {user && top3[1].id === user.id && (
-                    <span className="absolute -top-2 right-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Você</span>
-                  )}
-                </div>
               </div>
-            )}
-
-            {/* 1st Place */}
-            {top3[0] && (
-              <div className="relative col-span-1">
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-amber-200 dark:border-amber-800 p-4 pt-10 text-center relative shadow-xl">
-                  <Crown className="w-12 h-12 text-amber-500 mx-auto mb-2 animate-bounce" aria-hidden="true" />
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-2xl shadow-xl ring-4 ring-amber-200 dark:ring-amber-900">
-                    1
-                  </div>
-                  <MiniAvatar equipped={top3[0].equipped ?? null} size={72} className="mx-auto mb-2" />
-                  <p className="font-bold text-zinc-900 dark:text-white text-lg truncate">{top3[0].username}</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Nível {top3[0].level} · {getLevelTitle(top3[0].level)}
-                  </p>
-                  <p className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-1">
-                    {activeTab === "weekly" ? top3[0].xp : top3[0].xp.toLocaleString("pt-BR")} XP
-                  </p>
-                  {user && top3[0].id === user.id && (
-                    <span className="absolute -top-2 right-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Você</span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 3rd Place */}
-            {top3[2] && (
-              <div className="relative col-span-1">
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 pt-8 text-center relative">
-                  <Medal className="w-10 h-10 text-amber-700 mx-auto mb-2" aria-hidden="true" />
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-amber-700 flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                    3
-                  </div>
-                  <MiniAvatar equipped={top3[2].equipped ?? null} size={56} className="mx-auto mb-2" />
-                  <p className="font-bold text-zinc-900 dark:text-white truncate">{top3[2].username}</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Nível {top3[2].level} · {getLevelTitle(top3[2].level)}
-                  </p>
-                  <p className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-1">
-                    {activeTab === "weekly" ? top3[2].xp : top3[2].xp.toLocaleString("pt-BR")} XP
-                  </p>
-                  {user && top3[2].id === user.id && (
-                    <span className="absolute -top-2 right-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Você</span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Rest of Leaderboard */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-          {rest.length === 0 ? (
-            <div className="p-12 text-center">
-              <Trophy className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" aria-hidden="true" />
-              <p className="text-zinc-600 dark:text-zinc-400">Nenhum outro jogador no ranking ainda</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {rest.map((entry, idx) => {
-                const rank = idx + 4;
-                const isCurrentUser = user && entry.id === user.id;
-                return (
-                  <div
-                    key={entry.id}
-                    className={`p-4 flex items-center gap-4 transition-colors ${
-                      isCurrentUser ? "bg-amber-50 dark:bg-amber-900/20" : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                    }`}
-                  >
-                    <div className="w-10 text-center font-bold text-zinc-500 dark:text-zinc-400">
-                      #{rank}
-                    </div>
-                    <MiniAvatar equipped={entry.equipped ?? null} size={40} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`font-medium truncate ${isCurrentUser ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-white"}`}>
-                          {entry.username}
-                          {isCurrentUser && <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">Você</span>}
-                        </p>
-                      </div>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        Nível {entry.level} · {getLevelTitle(entry.level)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`font-bold ${isCurrentUser ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-white"}`}>
-                        {activeTab === "weekly" ? entry.xp : entry.xp.toLocaleString("pt-BR")} XP
-                      </p>
-                      {activeTab === "weekly" && (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">esta semana</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           )}
-        </div>
 
-        {/* Legend */}
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 text-sm">
-          <h3 className="font-semibold text-zinc-900 dark:text-white mb-2">Como funciona</h3>
-          <ul className="space-y-1 text-zinc-600 dark:text-zinc-400">
-            <li className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-amber-500" aria-hidden="true" />
-              <span><strong>Semanal:</strong> XP ganho nos últimos 7 dias (recompensas liberadas)</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-amber-500" aria-hidden="true" />
-              <span><strong>Geral:</strong> XP total acumulado desde o início</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-500" aria-hidden="true" />
-              <span>Ganhe XP reportando problemas, confirmando e resolvendo</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-500" aria-hidden="true" />
-              <span>Suba de nível e desbloqueie títulos exclusivos</span>
-            </li>
-          </ul>
-        </div>
+          {/* Podium (Top 3) */}
+          {top3.length > 0 && (
+            <div className="grid grid-cols-3 gap-4">
+              {/* 2nd Place */}
+              {top3[1] && (
+                <div className="relative col-span-1">
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 pt-8 text-center relative">
+                    <Medal className="w-10 h-10 text-zinc-600 mx-auto mb-2" aria-hidden="true" />
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-400 font-bold text-xl shadow-lg">
+                      2
+                    </div>
+                    <MiniAvatar equipped={top3[1].equipped ?? null} size={56} className="mx-auto mb-2" />
+                    <p className="font-bold text-white truncate">{top3[1].username}</p>
+                    <p className="text-sm text-zinc-500">
+                      Nível {top3[1].level} · {getLevelTitle(top3[1].level)}
+                    </p>
+                    <p className="text-lg font-bold text-amber-400 mt-1">
+                      {activeTab === "weekly" ? top3[1].xp : top3[1].xp.toLocaleString("pt-BR")} XP
+                    </p>
+                    {user && top3[1].id === user.id && (
+                      <span className="absolute -top-2 right-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Você</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
-      </div>
+              {/* 1st Place */}
+              {top3[0] && (
+                <div className="relative col-span-1">
+                  <div className="bg-zinc-900 border border-amber-500/30 rounded-2xl p-4 pt-10 text-center relative shadow-xl">
+                    <Crown className="w-12 h-12 text-amber-500 mx-auto mb-2 animate-bounce" aria-hidden="true" />
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-2xl shadow-xl ring-4 ring-amber-500/20">
+                      1
+                    </div>
+                    <MiniAvatar equipped={top3[0].equipped ?? null} size={72} className="mx-auto mb-2" />
+                    <p className="font-bold text-white text-lg truncate">{top3[0].username}</p>
+                    <p className="text-sm text-zinc-500">
+                      Nível {top3[0].level} · {getLevelTitle(top3[0].level)}
+                    </p>
+                    <p className="text-xl font-bold text-amber-400 mt-1">
+                      {activeTab === "weekly" ? top3[0].xp : top3[0].xp.toLocaleString("pt-BR")} XP
+                    </p>
+                    {user && top3[0].id === user.id && (
+                      <span className="absolute -top-2 right-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Você</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 3rd Place */}
+              {top3[2] && (
+                <div className="relative col-span-1">
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 pt-8 text-center relative">
+                    <Medal className="w-10 h-10 text-amber-700 mx-auto mb-2" aria-hidden="true" />
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-amber-700 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                      3
+                    </div>
+                    <MiniAvatar equipped={top3[2].equipped ?? null} size={56} className="mx-auto mb-2" />
+                    <p className="font-bold text-white truncate">{top3[2].username}</p>
+                    <p className="text-sm text-zinc-500">
+                      Nível {top3[2].level} · {getLevelTitle(top3[2].level)}
+                    </p>
+                    <p className="text-lg font-bold text-amber-400 mt-1">
+                      {activeTab === "weekly" ? top3[2].xp : top3[2].xp.toLocaleString("pt-BR")} XP
+                    </p>
+                    {user && top3[2].id === user.id && (
+                      <span className="absolute -top-2 right-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Você</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Rest of Leaderboard */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+            {rest.length === 0 ? (
+              <div className="p-12 text-center">
+                <Trophy className="w-12 h-12 text-zinc-600 mx-auto mb-3" aria-hidden="true" />
+                <p className="text-zinc-400">Nenhum outro jogador no ranking ainda</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-zinc-800">
+                {rest.map((entry, idx) => {
+                  const rank = idx + 4;
+                  const isCurrentUser = user && entry.id === user.id;
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`p-4 flex items-center gap-4 transition-colors ${
+                        isCurrentUser ? "bg-amber-500/10" : "hover:bg-zinc-800/50"
+                      }`}
+                    >
+                      <div className="w-10 text-center font-bold text-zinc-500">
+                        #{rank}
+                      </div>
+                      <MiniAvatar equipped={entry.equipped ?? null} size={40} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium truncate ${isCurrentUser ? "text-amber-400" : "text-white"}`}>
+                            {entry.username}
+                            {isCurrentUser && <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Você</span>}
+                          </p>
+                        </div>
+                        <p className="text-xs text-zinc-500">
+                          Nível {entry.level} · {getLevelTitle(entry.level)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-bold ${isCurrentUser ? "text-amber-400" : "text-white"}`}>
+                          {activeTab === "weekly" ? entry.xp : entry.xp.toLocaleString("pt-BR")} XP
+                        </p>
+                        {activeTab === "weekly" && (
+                          <p className="text-xs text-zinc-500">esta semana</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Legend */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-sm">
+            <h3 className="font-semibold text-white mb-2">Como funciona</h3>
+            <ul className="space-y-1 text-zinc-400">
+              <li className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-amber-500" aria-hidden="true" />
+                <span><strong>Semanal:</strong> XP ganho nos últimos 7 dias (recompensas liberadas)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-amber-500" aria-hidden="true" />
+                <span><strong>Geral:</strong> XP total acumulado desde o início</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" aria-hidden="true" />
+                <span>Ganhe XP reportando problemas, confirmando e resolvendo</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-500" aria-hidden="true" />
+                <span>Suba de nível e desbloqueie títulos exclusivos</span>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </main>
+
+      <BottomNavigation />
     </div>
   );
 }

@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { Map, Coins } from 'lucide-react';
 import { useSession } from '@/lib/auth';
 import { Avatar, AvatarPreview, MiniAvatar, Item, ItemRarity, ItemSlot, UserItem } from '@/app/components/avatar';
 import { fetchItems, fetchUserItems, buyItem } from '@/lib/supabase/client';
 import { ITEM_RARITY_CONFIG, ITEM_SLOT_LABELS, getItemRarityConfig, getSlotLabel } from '@/app/components/map/types';
 import { useToast } from '@/app/components/ui/Toast';
+import { BottomNavigation } from '@/app/components/ui/BottomNavigation';
 
 export default function LojaPage() {
   const { user, profile } = useSession();
@@ -46,10 +48,8 @@ export default function LojaPage() {
     try {
       const result = await buyItem(item.code);
       show(result.message, 'success');
-      // Refresh user items and profile
       const userItemsData = await fetchUserItems(user.id);
       setUserItems(userItemsData);
-      // Trigger profile refresh by reloading
       window.location.reload();
     } catch (err: any) {
       show(err.message, 'error');
@@ -78,41 +78,69 @@ export default function LojaPage() {
   const slots: (ItemSlot | 'all')[] = ['all', 'cabeca', 'corpo', 'acessorio', 'fundo'];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Navbar */}
-      <nav className="navbar-safe fixed top-0 left-0 right-0 z-40 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
+      {/* Top Bar */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 navbar-safe">
         <div className="max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-amber-600 dark:text-amber-400">
-            Civikoo
+          <Link href="/" className="flex items-center gap-3" aria-label="Civikoo - Início">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+              <Map className="w-5 h-5 text-white" aria-hidden="true" />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-lg font-bold text-white">Civikoo</h1>
+              <p className="text-xs text-zinc-500">Loja</p>
+            </div>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/perfil" className="flex items-center gap-2 px-3 py-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm font-medium">
-              <MiniAvatar equipped={profile?.equipped ?? null} size={32} />
-              <span>{profile?.username}</span>
-              <span className="px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full font-bold">
-                Nv.{profile?.level ?? 1}
+
+          <div className="flex items-center gap-3">
+            {/* Coins display */}
+            <div className="hidden md:flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5">
+              <span className="text-2xl">🪙</span>
+              <span className="text-lg font-bold text-amber-400">{profile?.coins ?? 0}</span>
+              <span className="text-xs text-zinc-500">moedas</span>
+            </div>
+
+            {/* Avatar */}
+            <Link
+              href="/perfil"
+              className="relative w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center hover:border-zinc-700 transition-colors"
+              aria-label="Meu perfil"
+            >
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600">
+                  <span className="text-white font-bold text-lg">
+                    {profile?.username?.charAt(0).toUpperCase() || "?"}
+                  </span>
+                </div>
+              )}
+              <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
+                {profile?.level ?? 1}
               </span>
             </Link>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <main className="pt-20 pb-24 px-4 max-w-screen-xl mx-auto">
-        {/* Header with coins */}
-        <div className="mb-6 flex items-center justify-between">
+      <main className="flex-1 pt-20 pb-24 px-4 max-w-screen-xl mx-auto w-full">
+        {/* Header with coins (mobile) */}
+        <div className="md:hidden mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Loja</h1>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-              Personalize seu avatar com itens exclusivos
-            </p>
+            <h1 className="text-2xl font-bold text-white">Loja</h1>
+            <p className="text-zinc-400 text-sm mt-1">Personalize seu avatar com itens exclusivos</p>
           </div>
-          <div className="flex items-center gap-3 px-4 py-2 bg-amber-100 dark:bg-amber-900/30 rounded-full border border-amber-300 dark:border-amber-700">
-            <span className="text-2xl">🪙</span>
-            <span className="text-lg font-bold text-amber-700 dark:text-amber-300">
-              {profile?.coins ?? 0}
-            </span>
-            <span className="text-sm text-amber-600 dark:text-amber-400">Moedas</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
+            <span className="text-xl">🪙</span>
+            <span className="text-lg font-bold text-amber-400">{profile?.coins ?? 0}</span>
+            <span className="text-sm text-zinc-500">Moedas</span>
           </div>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden md:block mb-6">
+          <h1 className="text-2xl font-bold text-white">Loja</h1>
+          <p className="text-zinc-400 text-sm mt-1">Personalize seu avatar com itens exclusivos</p>
         </div>
 
         {/* Avatar Preview */}
@@ -133,8 +161,8 @@ export default function LojaPage() {
               onClick={() => setActiveFilter(slot)}
               className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 activeFilter === slot
-                  ? 'bg-amber-600 text-white shadow-lg'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+                  ? 'bg-amber-500 text-white shadow-lg'
+                  : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200'
               }`}
             >
               {slot === 'all' ? 'Todos' : getSlotLabel(slot)}
@@ -146,17 +174,15 @@ export default function LojaPage() {
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
-                <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg mb-3" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+              <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 animate-pulse">
+                <div className="h-24 bg-zinc-800 rounded-lg mb-3" />
+                <div className="h-4 bg-zinc-800 rounded w-3/4 mb-2" />
+                <div className="h-3 bg-zinc-800 rounded w-1/2" />
               </div>
             ))}
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            Nenhum item encontrado para esta categoria.
-          </div>
+          <div className="text-center py-12 text-zinc-500">Nenhum item encontrado para esta categoria.</div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredItems.map(item => {
@@ -168,7 +194,7 @@ export default function LojaPage() {
               return (
                 <div
                   key={item.code}
-                  className={`relative group bg-white dark:bg-gray-800 rounded-xl border-2 transition-all duration-200 ${
+                  className={`relative group bg-zinc-900 border-2 transition-all duration-200 ${
                     rarityConfig.borderColor
                   } ${owned ? 'opacity-60' : ''}`}
                   onMouseEnter={() => setPreviewItem({ slot: item.slot, asset: item.asset, code: item.code, name: item.name })}
@@ -191,21 +217,12 @@ export default function LojaPage() {
 
                   {/* Item info */}
                   <div className="px-3 pb-3">
-                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                      {item.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      {getSlotLabel(item.slot)} • Nv. {item.min_level}+
-                    </p>
+                    <h3 className="font-semibold text-white text-sm truncate">{item.name}</h3>
+                    <p className="text-xs text-zinc-500 mb-2">{getSlotLabel(item.slot)} • Nv. {item.min_level}+</p>
 
                     {/* Buy/Owned button */}
                     {owned ? (
-                      <button
-                        className="w-full py-2 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg text-sm font-medium"
-                        disabled
-                      >
-                        ✓ Adquirido
-                      </button>
+                      <button className="w-full py-2 bg-zinc-800 text-zinc-500 rounded-lg text-sm font-medium" disabled>✓ Adquirido</button>
                     ) : (
                       <button
                         onClick={() => handleBuy(item)}
@@ -214,10 +231,10 @@ export default function LojaPage() {
                           buyingItemCode === item.code
                             ? 'bg-amber-400 text-white cursor-wait'
                             : !levelOk
-                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                             : !affordable
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 cursor-not-allowed border border-red-300 dark:border-red-700'
-                            : 'bg-amber-600 text-white hover:bg-amber-700 active:bg-amber-800'
+                            ? 'bg-red-500/10 text-red-400 border border-red-500/20 cursor-not-allowed'
+                            : 'bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700'
                         }`}
                       >
                         {buyingItemCode === item.code ? (
@@ -239,27 +256,7 @@ export default function LojaPage() {
         )}
       </main>
 
-      {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 bottom-sheet-safe">
-        <div className="grid grid-cols-4 max-w-screen-xl mx-auto">
-          <Link href="/" className="flex flex-col items-center py-3 text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-            <span className="text-xl">🗺️</span>
-            <span className="text-xs font-medium">Mapa</span>
-          </Link>
-          <Link href="/loja" className="flex flex-col items-center py-3 text-amber-600 dark:text-amber-400">
-            <span className="text-xl">🛍️</span>
-            <span className="text-xs font-medium">Loja</span>
-          </Link>
-          <Link href="/armario" className="flex flex-col items-center py-3 text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-            <span className="text-xl">👕</span>
-            <span className="text-xs font-medium">Armário</span>
-          </Link>
-          <Link href="/perfil" className="flex flex-col items-center py-3 text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-            <span className="text-xl">👤</span>
-            <span className="text-xs font-medium">Perfil</span>
-          </Link>
-        </div>
-      </nav>
+      <BottomNavigation />
     </div>
   );
 }
