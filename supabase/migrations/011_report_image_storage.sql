@@ -51,8 +51,8 @@ CREATE POLICY "report_images_delete_own" ON public.report_images
 CREATE OR REPLACE FUNCTION public.register_report_image(
   p_report_id uuid,
   p_storage_path text,
-  p_mime_type text DEFAULT 'image/webp',
   p_size_bytes int,
+  p_mime_type text DEFAULT 'image/webp',
   p_width int DEFAULT NULL,
   p_height int DEFAULT NULL,
   p_is_primary boolean DEFAULT false

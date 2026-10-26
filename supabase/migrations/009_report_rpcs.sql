@@ -5,10 +5,10 @@
 -- Confirm report (continua/resolvido) with server-side proximity check
 CREATE OR REPLACE FUNCTION public.confirm_report(
   p_report_id uuid,
-  p_user_id uuid DEFAULT NULL,
   p_type text, -- 'continua' or 'resolvido'
   p_latitude double precision,
   p_longitude double precision,
+  p_user_id uuid DEFAULT NULL,
   p_accuracy double precision DEFAULT NULL
 )
 RETURNS TABLE (success boolean, message text, distance_m double precision, accuracy_m double precision)
@@ -92,8 +92,8 @@ GRANT EXECUTE ON FUNCTION public.confirm_report TO authenticated;
 -- Flag report
 CREATE OR REPLACE FUNCTION public.flag_report(
   p_report_id uuid,
-  p_user_id uuid DEFAULT NULL,
-  p_reason text -- 'falso', 'duplicado', 'ofensivo', 'outro'
+  p_reason text, -- 'falso', 'duplicado', 'ofensivo', 'outro'
+  p_user_id uuid DEFAULT NULL
 )
 RETURNS TABLE (success boolean, message text, flags_count int, hidden boolean)
 LANGUAGE plpgsql

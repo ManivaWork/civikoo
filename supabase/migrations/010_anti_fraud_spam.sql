@@ -85,10 +85,10 @@ GRANT EXECUTE ON FUNCTION public.check_rate_limit TO authenticated;
 -- Function: flag potential fraud (called from confirm_report, report creation)
 CREATE OR REPLACE FUNCTION public.flag_fraud(
   p_user_id uuid,
-  p_report_id uuid DEFAULT NULL,
   p_alert_type text,
   p_severity text DEFAULT 'medium',
-  p_details jsonb DEFAULT '{}'::jsonb
+  p_details jsonb DEFAULT '{}'::jsonb,
+  p_report_id uuid DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
