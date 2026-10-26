@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MapPin, LogIn, UserPlus, Filter, Settings, Map } from "lucide-react";
@@ -294,7 +294,11 @@ function HomeContent() {
   const [mapBounds, setMapBounds] = useState<{ minLat: number; minLng: number; maxLat: number; maxLng: number } | null>(null);
   const [viewportReports, setViewportReports] = useState<Report[]>([]);
   const [hasLoadedViewport, setHasLoadedViewport] = useState(false);
+
+  // Stable filters reference - only recreate when values actually change
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const filtersRef = useRef(filters);
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
 
   // Get user location on mount
   useEffect(() => {
@@ -332,7 +336,7 @@ function HomeContent() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  // Fetch reports from Supabase when user location is available (initial load)
+  // Fetch reports from Supabase when user location is available - ONLY for new report flow
   const fetchInitialReports = useCallback(async () => {
     if (!userLocation) return;
 
@@ -394,92 +398,11 @@ function HomeContent() {
     }
   }, [userLocation]);
 
-  // Fetch reports when location changes (initial load only)
-  useEffect(() => {
-    if (userLocation) {
-      fetchInitialReports();
-    }
-  }, [fetchInitialReports]);
-
-  // Handle map bounds change - trigger viewport-based loading
-  const handleMapBoundsChange = useCallback(async (bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number } | null) => {
-    if (!bounds || !userLocation) return;
-
+  // Handle map bounds change - just update bounds, MapView handles fetching
+  const handleMapBoundsChange = useCallback((bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number } | null) => {
+    if (!bounds) return;
     setMapBounds(bounds);
-
-    // Don't fetch if using mock data
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnonKey) return;
-
-    try {
-      // Convert period to days
-      let sinceDays: number | undefined;
-      if (filters.period === "7d") sinceDays = 7;
-      else if (filters.period === "30d") sinceDays = 30;
-      else if (filters.period === "all") sinceDays = undefined;
-
-      // Build categories array (empty means all)
-      const categories = filters.categories.length > 0 ? filters.categories : undefined;
-      const statuses = filters.statuses.length > 0 ? filters.statuses : undefined;
-
-      // Handle nearMe filter - adjust bounds if enabled
-      let fetchBounds = bounds;
-      if (filters.nearMe?.enabled) {
-        const radiusDeg = filters.nearMe.radius / 111000; // approximate degrees
-        fetchBounds = {
-          minLat: userLocation.lat - radiusDeg,
-          minLng: userLocation.lng - radiusDeg,
-          maxLat: userLocation.lat + radiusDeg,
-          maxLng: userLocation.lng + radiusDeg,
-        };
-      }
-
-      const data = await fetchReportsInBounds({
-        minLat: fetchBounds.minLat,
-        minLng: fetchBounds.minLng,
-        maxLat: fetchBounds.maxLat,
-        maxLng: fetchBounds.maxLng,
-        categories,
-        statuses,
-        userId: filters.onlyMine ? user?.id : undefined,
-        onlyMine: filters.onlyMine,
-        sinceDays,
-        limit: 500,
-      });
-
-      // Transform data to Report type
-      const formattedReports: Report[] = data.map((r: any) => ({
-        id: r.id,
-        user_id: r.user_id,
-        latitude: r.latitude,
-        longitude: r.longitude,
-        category: r.category,
-        title: r.title,
-        description: r.description,
-        photo_url: r.image_url || "",
-        photo_thumbnail_url: r.image_url,
-        image_url: r.image_url,
-        status: r.status,
-        confirmations_continua: r.confirmations_continua || 0,
-        confirmations_resolvido: r.confirmations_resolvido || 0,
-        created_at: r.created_at,
-        updated_at: r.updated_at,
-        creator_username: r.creator_username,
-        creator_avatar: r.creator_avatar,
-        creator_level: r.creator_level,
-        resolved_at: r.resolved_at,
-        user_has_confirmed_continua: false,
-        user_has_confirmed_resolvido: false,
-      }));
-
-      setViewportReports(formattedReports);
-      setFilteredReportsCount(formattedReports.length);
-      setHasLoadedViewport(true);
-    } catch (err) {
-      console.error("Failed to fetch viewport reports:", err);
-    }
-  }, [userLocation, filters, user]);
+  }, []);
 
   // Fetch user's confirmations for each report (to disable buttons)
   const fetchUserConfirmations = useCallback(async (reportIds: string[]) => {
@@ -612,8 +535,10 @@ function HomeContent() {
 
   const handleOpenReport = useCallback(() => {
     if (!user) return;
+    // Fetch nearby reports for duplicate detection when opening report flow
+    fetchInitialReports();
     setIsReportSheetOpen(true);
-  }, [user]);
+  }, [user, fetchInitialReports]);
 
   const handleCloseReportSheet = useCallback(() => {
     setIsReportSheetOpen(false);

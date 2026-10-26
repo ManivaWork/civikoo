@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { BottomNavigation } from "@/app/components/ui/BottomNavigation";
 
 interface CadastroFormProps {
   redirectTo: string;
@@ -245,8 +244,6 @@ export function CadastroForm({ redirectTo }: CadastroFormProps) {
           </p>
         </div>
       </main>
-
-      <BottomNavigation />
     </div>
   );
 }

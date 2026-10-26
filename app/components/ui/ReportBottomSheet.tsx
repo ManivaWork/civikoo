@@ -2,7 +2,7 @@
 
 import { useState, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
-import { X, ChevronLeft, ChevronRight, Flag } from "lucide-react";
+import { X, Flag } from "lucide-react";
 import { useToast } from "./Toast";
 import { useSession } from "@/lib/auth";
 import { findNearbyReports } from "@/lib/supabase/client";
@@ -110,26 +110,21 @@ export function ReportBottomSheet({
   const handleGPSConfirm = useCallback(async (position: { lat: number; lng: number }) => {
     setReportData(prev => ({ ...prev, position }));
 
-    // If we have a category selected, check for nearby reports
-    // NOTA: A verificação de reports próximos usa a posição do cliente que pode ser falsificada.
-    // Isso é apenas uma sugestão UX para evitar duplicatas, não uma garantia de segurança.
-    // O servidor tem triggers que rejeitam duplicatas (mesma categoria, <15m, não resolvido).
     if (reportData.category) {
       try {
         const nearby = await findNearbyReports(
           position.lat,
           position.lng,
           reportData.category,
-          30 // 30 meters radius
+          30
         );
         if (nearby.length > 0) {
           setNearbyReports(nearby);
           setShowNearbyModal(true);
-          return; // Don't go to next step yet
+          return;
         }
       } catch (err) {
         console.warn("Failed to check nearby reports:", err);
-        // Continue anyway if check fails
       }
     }
     goNext();
@@ -151,13 +146,15 @@ export function ReportBottomSheet({
   }, [goNext]);
 
   const handleSubmitComplete = useCallback(() => {
+    if (reportData.previewUrl) {
+      URL.revokeObjectURL(reportData.previewUrl);
+    }
     setReportData({});
     setCurrentStep("gps");
     onClose();
-  }, [onClose]);
+  }, [onClose, reportData.previewUrl]);
 
   const handleCancel = useCallback(() => {
-    // Clean up preview URL
     if (reportData.previewUrl) {
       URL.revokeObjectURL(reportData.previewUrl);
     }
@@ -165,15 +162,6 @@ export function ReportBottomSheet({
     setCurrentStep("gps");
     onClose();
   }, [reportData.previewUrl, onClose]);
-
-  if (!isOpen) return null;
-
-  // Check authentication for submit step
-  if (currentStep === "submit" && !user) {
-    show("Você precisa estar logado para enviar um reporte", "error");
-    goBack();
-    return null;
-  }
 
   const handleConfirmExisting = useCallback((reportId: string) => {
     // Close modals and navigate to the existing report
@@ -184,6 +172,35 @@ export function ReportBottomSheet({
     // We could emit an event or call a callback, but for now just close
     show(`Abrindo reporte existente para confirmação...`, "info");
   }, [onClose, show]);
+
+  if (!isOpen) return null;
+
+  // Check authentication for submit step - render inline instead of early return
+  const showAuthError = currentStep === "submit" && !user;
+
+  if (showAuthError) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={handleCancel}>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 max-w-sm mx-4 shadow-xl animate-slide-up">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <span className="text-red-600 dark:text-red-400 text-xl">⚠️</span>
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Login necessário</h3>
+          </div>
+          <p className="text-zinc-600 dark:text-zinc-400 mb-6">Você precisa estar logado para enviar um reporte.</p>
+          <div className="flex gap-3">
+            <button onClick={goBack} className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+              Voltar
+            </button>
+            <button onClick={() => { handleCancel(); window.location.href = '/login?redirect=/registrar'; }} className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-colors">
+              Fazer login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end animate-slide-up">
@@ -211,24 +228,24 @@ export function ReportBottomSheet({
               <div
                 key={step}
                 className={`w-2 h-2 rounded-full transition-colors ${
-                  i <= currentIndex ? "bg-amber-500" : "bg-zinc-300 dark:bg-zinc-600"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
+                      i <= currentIndex ? "bg-amber-500" : "bg-zinc-300 dark:bg-zinc-600"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
 
-        {/* Step Content */}
-        <div className="flex-1 overflow-hidden min-h-0">
-          {currentStep === "gps" && (
-            <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>}>
-              <ReportStepGPS
-                initialPosition={initialPosition || reportData.position || null}
-                onConfirm={handleGPSConfirm}
-                onCancel={handleCancel}
-              />
-            </Suspense>
-          )}
+            {/* Step Content */}
+            <div className="flex-1 overflow-hidden min-h-0">
+              {currentStep === "gps" && (
+                <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>}>
+                  <ReportStepGPS
+                    initialPosition={initialPosition || reportData.position || null}
+                    onConfirm={handleGPSConfirm}
+                    onCancel={handleCancel}
+                  />
+                </Suspense>
+              )}
           {currentStep === "photo" && (
             <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <ReportStepPhoto

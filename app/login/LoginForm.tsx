@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { BottomNavigation } from "@/app/components/ui/BottomNavigation";
 
 interface LoginFormProps {
   redirectTo: string;
@@ -203,8 +202,6 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
           </p>
         </div>
       </main>
-
-      <BottomNavigation />
     </div>
   );
 }

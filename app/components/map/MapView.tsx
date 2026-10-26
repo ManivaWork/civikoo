@@ -109,12 +109,24 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
 function BoundsTracker({ onBoundsChange }: { onBoundsChange: (bounds: Bounds) => void }) {
   const map = useMap();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastBoundsRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     const handler = () => {
+      if (!isMountedRef.current) return;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return;
         const bounds = map.getBounds();
+        const boundsKey = `${bounds.getSouth().toFixed(6)},${bounds.getWest().toFixed(6)},${bounds.getNorth().toFixed(6)},${bounds.getEast().toFixed(6)}`;
+        if (boundsKey === lastBoundsRef.current) return;
+        lastBoundsRef.current = boundsKey;
         onBoundsChange({
           minLat: bounds.getSouth(),
           minLng: bounds.getWest(),
@@ -124,8 +136,7 @@ function BoundsTracker({ onBoundsChange }: { onBoundsChange: (bounds: Bounds) =>
       }, 400); // 400ms debounce
     };
     map.on("moveend", handler);
-    // Also trigger on initial load
-    handler();
+    // Do NOT trigger on initial load - let parent decide when to fetch
     return () => {
       map.off("moveend", handler);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -392,30 +403,61 @@ export function MapView({
     onReportSelect?.(null);
   }, [onReportSelect]);
 
+  // Refs for stable values and abort control
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastFetchedBoundsRef = useRef<string | null>(null);
+  const filtersRef = useRef(filters);
+  const userLocationRef = useRef(userLocation);
+  const userProfileRef = useRef(userProfile);
+  const onBoundsChangeRef = useRef(onBoundsChange);
+
+  // Keep refs updated
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
+  useEffect(() => { userProfileRef.current = userProfile; }, [userProfile]);
+  useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
+
+  const boundsChangedEnough = (newBounds: Bounds, oldBoundsKey: string | null): boolean => {
+    if (!oldBoundsKey) return true;
+    const newKey = `${newBounds.minLat.toFixed(4)},${newBounds.minLng.toFixed(4)},${newBounds.maxLat.toFixed(4)},${newBounds.maxLng.toFixed(4)}`;
+    return newKey !== oldBoundsKey;
+  };
+
   const handleBoundsChange = useCallback(async (bounds: Bounds) => {
-    if (!filters) return;
+    const currentFilters = filtersRef.current;
+    if (!currentFilters) return;
+
+    // Dedup: only fetch if bounds changed significantly (~100m at equator ≈ 0.001 deg)
+    if (!boundsChangedEnough(bounds, lastFetchedBoundsRef.current)) return;
+    lastFetchedBoundsRef.current = `${bounds.minLat.toFixed(4)},${bounds.minLng.toFixed(4)},${bounds.maxLat.toFixed(4)},${bounds.maxLng.toFixed(4)}`;
+
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setIsLoadingViewport(true);
     try {
       // Convert period to days
       let sinceDays: number | undefined;
-      if (filters.period === "7d") sinceDays = 7;
-      else if (filters.period === "30d") sinceDays = 30;
-      else if (filters.period === "all") sinceDays = undefined;
+      if (currentFilters.period === "7d") sinceDays = 7;
+      else if (currentFilters.period === "30d") sinceDays = 30;
+      else if (currentFilters.period === "all") sinceDays = undefined;
 
-      // Build categories array (empty means all)
-      const categories = filters.categories.length > 0 ? filters.categories : undefined;
-      const statuses = filters.statuses.length > 0 ? filters.statuses : undefined;
+      const categories = currentFilters.categories.length > 0 ? currentFilters.categories : undefined;
+      const statuses = currentFilters.statuses.length > 0 ? currentFilters.statuses : undefined;
 
-      // Handle nearMe filter - adjust bounds if enabled
       let fetchBounds = bounds;
-      if (filters.nearMe?.enabled && userLocation) {
-        const radiusDeg = filters.nearMe.radius / 111000; // approximate degrees
+      const currentUserLocation = userLocationRef.current;
+      if (currentFilters.nearMe?.enabled && currentUserLocation) {
+        const radiusDeg = currentFilters.nearMe.radius / 111000;
         fetchBounds = {
-          minLat: userLocation.lat - radiusDeg,
-          minLng: userLocation.lng - radiusDeg,
-          maxLat: userLocation.lat + radiusDeg,
-          maxLng: userLocation.lng + radiusDeg,
+          minLat: currentUserLocation.lat - radiusDeg,
+          minLng: currentUserLocation.lng - radiusDeg,
+          maxLat: currentUserLocation.lat + radiusDeg,
+          maxLng: currentUserLocation.lng + radiusDeg,
         };
       }
 
@@ -426,13 +468,14 @@ export function MapView({
         maxLng: fetchBounds.maxLng,
         categories,
         statuses,
-        userId: filters.onlyMine ? userProfile?.id : undefined,
-        onlyMine: filters.onlyMine,
+        userId: currentFilters.onlyMine ? userProfileRef.current?.id : undefined,
+        onlyMine: currentFilters.onlyMine,
         sinceDays,
         limit: 500,
       });
 
-      // Transform data to Report type
+      if (controller.signal.aborted) return;
+
       const formattedReports: Report[] = data.map((r: any) => ({
         id: r.id,
         user_id: r.user_id,
@@ -457,13 +500,16 @@ export function MapView({
 
       setViewportReports(formattedReports);
       setHasLoadedOnce(true);
-      onBoundsChange?.(bounds);
-    } catch (err) {
+      onBoundsChangeRef.current?.(bounds);
+    } catch (err: any) {
+      if (err.name === 'AbortError' || controller.signal.aborted) return;
       console.error("Failed to fetch viewport reports:", err);
     } finally {
-      setIsLoadingViewport(false);
+      if (!controller.signal.aborted) {
+        setIsLoadingViewport(false);
+      }
     }
-  }, [filters, userLocation, userProfile, onBoundsChange]);
+  }, []);
 
   const handleRefresh = useCallback(() => {
     setHasLoadedOnce(false);
